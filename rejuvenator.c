@@ -14,11 +14,11 @@
 #define N_LOG_BLOCKS    100     //number of logical blocks in disk (< N_PHY_BLOCKS)
 #define N_PAGE          100     //number of page in a block
 #define LRU_SIZE        100     //lru size by page
-#define MAX_WEAR_CNT    1000     //user definede constant
+#define MAX_WEAR_CNT    1000     //user defined constant
 
 int tau = 20;     //max_wear <= min_wear + tau
-bool clean[N_PHY_BLOCKS] = {True};  // clean bit for physical block; phy ID -> bool
-int index_2_physical[N_PHY_BLOCKS]; // index -> phy ID
+bool clean[N_PHY_BLOCKS] = {True};  // clean bit for physical block; phy block ID -> bool
+int index_2_physical[N_PHY_BLOCKS]; // index -> phy block ID
 int erase_count_index[MAX_WEAR_CNT] = N_PHY_BLOCKS;    //erase count separator; erase count i -> end index of erase cnt=i in index_2_physical array
 
 /*            Rejuvenator index data structure
@@ -48,12 +48,58 @@ int l_to_p[N_LOG_BLOCKS][N_PAGE] = {-1};  //page table: [lb][lp] -> physical add
 int phy_page_info[N_PHY_BLOCKS][N_PAGE] = {CLEAN};  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
 
 int l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
-int h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the lower number list
+int h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
 
 //TODO: LRU cache
 
+/*
+* initialize
+*/
 void initialize(){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
     }
+}
+
+/*
+* write major function
+*    :param d: data
+*    :param lb: logical block
+*    :param lp: logical page
+*   invariant: h_clean_counter >= 1
+*/
+void write(int d, int lb, int lp)
+{
+    _write_helper(d, lb, lp);
+    _update_lru(lb, lp);
+    //if there is no clean block then GC
+    if (h_clean_counter < 1){
+        gc();
+    }
+}
+
+/*
+* write helper function
+*    :param d: data
+*    :param lb: logical block address
+*    :param lp: logical page number
+*    :return:
+*/
+void _write_helper(int d, int lb, int lp){
+    //check the logical address is hot or cold
+    if( !isHotPage(lb, lp)){
+
+    }
+
+}
+void _update_lru(lb, lp){
+
+}
+
+bool isHotPage(int lb, int lp){
+
+}
+
+int main(){
+    initialize();
 }
