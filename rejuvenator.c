@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define CLEAN           (-1)
 #define INVALID         (-2)
@@ -17,9 +18,9 @@
 #define MAX_WEAR_CNT    1000     //user defined constant
 
 int tau = 20;     //max_wear <= min_wear + tau
-bool clean[N_PHY_BLOCKS] = {True};  // clean bit for physical block; phy block ID -> bool
+bool clean[N_PHY_BLOCKS] = {true};  // clean bit for physical block; phy block ID -> bool
 int index_2_physical[N_PHY_BLOCKS]; // index -> phy block ID
-int erase_count_index[MAX_WEAR_CNT] = N_PHY_BLOCKS;    //erase count separator; erase count i -> end index of erase cnt=i in index_2_physical array
+int erase_count_index[MAX_WEAR_CNT] = {N_PHY_BLOCKS};    //erase count separator; erase count i -> end index of erase cnt=i in index_2_physical array
 
 /*            Rejuvenator index data structure
             index_2_physical : it is index for each physical block 
@@ -47,8 +48,8 @@ int l_act_page_p = 0;   //low active page pointer for physical page
 int l_to_p[N_LOG_BLOCKS][N_PAGE] = {-1};  //page table: [lb][lp] -> physical address(by page addressing)
 int phy_page_info[N_PHY_BLOCKS][N_PAGE] = {CLEAN};  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
 
-int l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
-int h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
+int l_clean_counter; //number of clean blocks in the lower number list
+int h_clean_counter;   //number of clean blocks in the higher number list
 
 //TODO: LRU cache
 
@@ -59,6 +60,8 @@ void initialize(){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
     }
+    l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
+    h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
 }
 
 /*
@@ -92,7 +95,7 @@ void _write_helper(int d, int lb, int lp){
     }
 
 }
-void _update_lru(lb, lp){
+void _update_lru(int lb, int lp){
 
 }
 
