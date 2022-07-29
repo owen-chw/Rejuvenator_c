@@ -91,10 +91,29 @@ void write(int d, int lb, int lp)
 void _write_helper(int d, int lb, int lp){
     //check the logical address is hot or cold
     if( !isHotPage(lb, lp)){
-
+        //cold data
+        _write_2_higher_number_list(d, lb, lp);
+    }else{
+        //hot data
+        if(l_clean_counter < 1){
+            //if there is no clean block in the lower number list, write to the higher number list
+            _write_2_higher_number_list(d, lb, lp);
+        }else{
+            //write to lower number list
+            _write_2_lower_number_list(d, lb, lp);
+        }
     }
 
 }
+
+void _write_2_higher_number_list(int d, int lb, int lp){
+
+}
+
+void _write_2_lower_number_list(int d, int lb, int lp){
+
+}
+
 void _update_lru(int lb, int lp){
 
 }
