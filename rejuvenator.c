@@ -56,7 +56,7 @@ int h_clean_counter;   //number of clean blocks in the higher number list
 /*
 * initialize
 */
-void initialize(){
+void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
     }
@@ -188,6 +188,37 @@ void _write_2_lower_number_list(int d, int lb, int lp){
 }
 
 /*
+*perform garbage collection to ensure there is at least one clean block
+*    :return:
+*/
+void gc(void){
+    //first check higher number list to guarantee the invariant of h_clean_counter >= 1
+    if(h_clean_counter < 1){
+        int h_vic_idx = _find_vb(N_PHY_BLOCKS/2, N_PHY_BLOCKS);
+        _erase_block_data(h_vic_idx); 
+    }else if(l_clean_counter < 1){
+        // check lower number list
+        int l_vic_idx = _find_vb(0, N_PHY_BLOCKS/2);
+        _erase_block_data(l_vic_idx);
+    }else{
+        int v_idx = _find_vb(0, N_PHY_BLOCKS);
+        _erase_block_data(v_idx);
+    }
+}
+
+/*
+*find a victim block from [erase_count_start, erase_count_end)
+*    :return victim_idx
+*/
+int _find_vb(int start_idx, int end_idx){
+
+}
+
+void _erase_block_data(int idx){
+
+}
+
+/*
 *    API
 *    write data to physical address
 *    :param d: data
@@ -198,6 +229,7 @@ void _write_2_lower_number_list(int d, int lb, int lp){
 void _w(int d, int pb, int pg){
     //pass
 }
+
 void _update_lru(int lb, int lp){
 
 }
@@ -206,6 +238,6 @@ bool isHotPage(int lb, int lp){
 
 }
 
-int main(){
+int main(void){
     initialize();
 }
