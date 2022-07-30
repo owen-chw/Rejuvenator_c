@@ -146,8 +146,45 @@ void _write_2_higher_number_list(int d, int lb, int lp){
     }
 }
 
+/*
+* helper function of writting to lower num list
+*    :param d: data
+*    :param lb: logical block address
+*    :param lp: logical page number
+*    :return:
+*/
 void _write_2_lower_number_list(int d, int lb, int lp){
+    int pb = index_2_physical[l_act_block_index_p]; //get active block ID
+    int pp = l_act_page_p;  //get active page
+    _w(d, pb, pp);  //write data
 
+    //update logical to physical mapping
+    if(l_to_p[lb][lp] != -1){
+        //clean previous physical address from the same logical address
+        int old_addr = l_to_p[lb][lp];
+        int opb = old_addr / N_PAGE; //turn page addressing to block id
+        int opp = old_addr % N_PAGE; //turn page addressing to page offset
+        phy_page_info[opb][opp] = INVALID;      
+    }
+    int new_addr = pb * N_PAGE + pp;
+    l_to_p[lb][lp] = new_addr;
+
+    //update active pointer value
+    if (l_act_page_p + 1 == N_PAGE){
+        //page + 1 == block size
+        //move the low pointer to the next clean block
+        //search a clean block from the head of the low number list 
+        l_act_block_index_p = 0;
+        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false ){
+            l_act_block_index_p += 1;
+        }       
+        l_clean_counter -= 1;
+        clean[ index_2_physical[ l_act_block_index_p ] ] = false;
+        l_act_page_p = 0;
+    }else{
+        //page + 1 < block size
+        l_act_page_p += 1;
+    }
 }
 
 void _w(int d, int pb, int pg){
