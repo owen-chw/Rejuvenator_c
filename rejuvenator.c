@@ -187,8 +187,16 @@ void _write_2_lower_number_list(int d, int lb, int lp){
     }
 }
 
+/*
+*    API
+*    write data to physical address
+*    :param d: data
+*    :param pb: physical block
+*    :param pg: physical page
+*    :return:
+*/
 void _w(int d, int pb, int pg){
-
+    //pass
 }
 void _update_lru(int lb, int lp){
 
