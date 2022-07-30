@@ -19,7 +19,7 @@
 
 int tau = 20;     //max_wear <= min_wear + tau
 bool clean[N_PHY_BLOCKS] = {true};  // clean bit for physical block; phy block ID -> bool
-int index_2_physical[N_PHY_BLOCKS]; // index -> phy block ID
+int index_2_physical[N_PHY_BLOCKS]; //main list of rejuvenator; index -> phy block ID
 int erase_count_index[MAX_WEAR_CNT] = {N_PHY_BLOCKS};    //erase count separator; erase count i -> end index of erase cnt=i in index_2_physical array
 
 /*            Rejuvenator index data structure
@@ -103,17 +103,56 @@ void _write_helper(int d, int lb, int lp){
             _write_2_lower_number_list(d, lb, lp);
         }
     }
-
 }
 
+/*
+* helper function of writting to higher num list
+*    :param d: data
+*    :param lb: logical block address
+*    :param lp: logical page number
+*    :return:
+*/
 void _write_2_higher_number_list(int d, int lb, int lp){
+    int pb = index_2_physical[h_act_block_index_p]; //get active block ID
+    int pp = h_act_page_p;  //get active page
+    _w(d, pb, pp);  //write data
 
+    //update logical to physical mapping
+    if(l_to_p[lb][lp] != -1){
+        //clean previous physical address from the same logical address
+        int old_addr = l_to_p[lb][lp];
+        int opb = old_addr / N_PAGE; //turn page addressing to block id
+        int opp = old_addr % N_PAGE; //turn page addressing to page offset
+        phy_page_info[opb][opp] = INVALID;
+    }
+    int new_addr = pb * N_PAGE + pp;
+    l_to_p[lb][lp] = new_addr;
+
+    //update active pointer value
+    if(h_act_page_p + 1 == N_PAGE ){
+        //page + 1 == block size
+        //move the high pointer to the next clean block
+        //search a clean block from the head of the high number list
+        h_act_block_index_p = N_PHY_BLOCKS / 2;
+        while(clean[index_2_physical[h_act_block_index_p]] == false){
+            h_act_block_index_p ++;
+        }
+        h_clean_counter -= 1;
+        clean[index_2_physical[h_act_block_index_p]] = false;
+        h_act_page_p = 0;
+    }else{
+        //page + 1 < block size
+        h_act_page_p +=1;
+    }
 }
 
 void _write_2_lower_number_list(int d, int lb, int lp){
 
 }
 
+void _w(int d, int pb, int pg){
+
+}
 void _update_lru(int lb, int lp){
 
 }
