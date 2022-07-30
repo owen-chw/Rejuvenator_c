@@ -207,10 +207,50 @@ void gc(void){
 }
 
 /*
+*perform data migration when victim block is in Maxwear
+*/
+void data_migration(void){
+    int idx = _get_most_clean_efficient_block_idx();
+    if( min_wear() + tau <= _get_erase_count_by_idx(idx) ){     //why don't use max_wear() ? why < ?
+        // move all the block in min_wear
+        idx = erase_count_index[ min_wear() - 1 ];  //set index to the front of erase count i   //if min_wear()=0 ?
+        int end_idx = erase_count_index[ min_wear() ];
+        while(idx < end_idx){
+            _erase_block_data(idx);
+            idx +=1;
+        }
+    } 
+}
+
+/*
+* get the erase count of min wear
+*   :return: min_wear value
+*/  
+int min_wear(void){
+
+}
+
+/*
+* Get the erase-count of the physical block indexed by idx in the index_2_physical
+*    :param idx: index in the index_2_physical
+*    :return: erase count
+*/
+int _get_erase_count_by_idx(int idx){
+
+}
+/*
 *find a victim block from [erase_count_start, erase_count_end)
 *    :return victim_idx
 */
 int _find_vb(int start_idx, int end_idx){
+
+}
+
+/*
+* this is similiar with _find_vb
+* but it doesn't ignore blocks in Maxwear
+*/ 
+int _get_most_clean_efficient_block_idx(void){
 
 }
 
