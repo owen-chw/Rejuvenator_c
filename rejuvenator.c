@@ -239,6 +239,18 @@ int min_wear(void){
 }
 
 /*
+*    Get the erase count of max_wear value
+*    :return: max_wear value
+*/
+int max_wear(void){
+    for(int i = 0 ; i<MAX_WEAR_CNT ; i++){
+        if (erase_count_index[i] == N_PHY_BLOCKS){
+            return i;
+        }
+    }
+}
+
+/*
 * Get the erase-count of the physical block indexed by idx in the index_2_physical
 *    :param idx: index in the index_2_physical
 *    :return: erase count
