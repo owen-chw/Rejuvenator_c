@@ -375,6 +375,16 @@ int _r(int pb, int pg){
     //pass
 }
 
+/*
+*    API 
+*    erase block
+*    :param pb: physical block address
+*    :return:
+*/
+void _erase_block(int pb){
+    //pass
+}
+
 void _update_lru(int lb, int lp){
 
 }
