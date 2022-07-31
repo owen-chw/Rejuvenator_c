@@ -256,7 +256,12 @@ int max_wear(void){
 *    :return: erase count
 */
 int _get_erase_count_by_idx(int idx){
-//TODO
+    for(int cur = 0 ; cur < N_PHY_BLOCKS ; cur++){
+        if (erase_count_index[cur] > idx){
+            return cur;
+        }
+    }
+    return N_PHY_BLOCKS;    //why?
 }
 /*
 *find a victim block from [erase_count_start, erase_count_end)
