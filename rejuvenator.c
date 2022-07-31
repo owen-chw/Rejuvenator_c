@@ -229,6 +229,12 @@ void data_migration(void){
 *   :return: min_wear value
 */  
 int min_wear(void){
+    for (int i=0 ; i<MAX_WEAR_CNT ; i++){
+        if(erase_count_index[i] != 0){
+            return i;
+        }
+    }
+    return N_PHY_BLOCKS;    //why?
 
 }
 
@@ -282,6 +288,7 @@ void _w(int d, int pb, int pg){
 int _r(int pb, int pg){
     //pass
 }
+
 void _update_lru(int lb, int lp){
 
 }
