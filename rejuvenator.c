@@ -375,9 +375,52 @@ void _erase_block_data(int idx){
     _increase_erase_count(idx);
 }
 
-void _increase_erase_count(int idx){
+/*
+* increase the erase count by swapping idx with the last elment which has the same erase count
+*   :param idx: index in the index_2_physical
+*   :return:
+**********************************************************************************************
+a  example of FTLEraseOneBlock:
+    index                          : 0, 1, 2, 3, 4, 5, 6
+	erase count                    : 1, 2, 2, 2, 2, 3, 4
+	index_2_physical store block ID: 1, 3, 2, 4, 5, 6, 7
 
+	now we want to erase idx = 2;
+	get its erase count:
+		erase_count = _get_erase_count_by_idx(idx) = 2
+	get the end index of the same "old erasecnt" in the index_2_physical:
+		last_block_idx = erase_count_index[erase_count] - 1 = 5-1 = 4
+	swap the block of index=2 and index=4 in index_2_physical, then get:
+	index                          : 0, 1, 2, 3, 4, 5, 6
+	erase count                    : 1, 2, 2, 2, 2, 3, 4
+	index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
+
+	update erase count boundry:
+        erase_count_index[erase_count] -=1  5->4
+	index                          : 0, 1, 2, 3, 4, 5, 6
+	erase count                    : 1, 2, 2, 2, 3, 3, 4
+	index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
+*/
+void _increase_erase_count(int idx){
+    //swap the index_2_physical[idx] with the element which has teh same erase count
+    int erase_count = _get_erase_count_by_idx(idx); //get the erase cnt of idx
+    int last_block_idx = erase_count_index[erase_count] - 1;    //get the ending index which has the same erase cnt
+    int temp = index_2_physical[idx];
+    index_2_physical[idx] = index_2_physical[last_block_idx];
+    index_2_physical[last_block_idx] = temp;
+
+    // update the erase_count boundary index
+    erase_count_index[erase_count] -= 1;
+
+    idx = last_block_idx;   // because the block ID in old idx is now in last_block_idx
+    //update clean counter
+    if(idx < (N_PHY_BLOCKS/2)){
+        l_clean_counter += 1;
+    }else{
+        h_clean_counter += 1;
+    }
 }
+
 /*
 *    API
 *    write data to physical address
