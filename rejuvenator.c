@@ -51,7 +51,7 @@ int phy_page_info[N_PHY_BLOCKS][N_PAGE] = {CLEAN};  //page information it can be
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
 
-//TODO: LRU cache
+//TODO: init_LRU_cache, updata_lru, is hot page, read, update tau?
 
 /*
 * initialize
