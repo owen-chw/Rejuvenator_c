@@ -348,10 +348,36 @@ int _get_most_clean_efficient_block_idx(void){
     return most_efficient_idx;
 }
 
+/*
+* move valid page and erase this block; then increase erase cnt
+*   :param idx: index in the index_2_physical
+*   :return:
+*/
 void _erase_block_data(int idx){
-
+    int pb = index_2_physical[idx]; //get physical block
+    int pp = 0; //get physical page
+    
+    //copy valid page to another space and set the page to clean
+    while(pp != N_PAGE){
+        if(phy_page_info[pb][pp] >= 0){
+            int la = phy_page_info[pb][pp]; //get logical addr
+            int lb = la / N_PAGE; //get logical block id
+            int lp = la % N_PAGE;   //get logical page offset
+            _write_helper(_r(pb,pp), lb, lp);
+        }
+        phy_page_info[pb][pp] = CLEAN;
+        pp++;
+    }
+    
+    //erase the block by disk erase API
+    _erase_block(pb);
+    //update erase count for pb
+    _increase_erase_count(idx);
 }
 
+void _increase_erase_count(int idx){
+
+}
 /*
 *    API
 *    write data to physical address
