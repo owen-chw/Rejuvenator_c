@@ -175,13 +175,14 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         //page + 1 == block size
         //move the low pointer to the next clean block
         //search a clean block from the head of the low number list 
-        l_act_block_index_p = 0;
-        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false ){
-            l_act_block_index_p += 1;
-        }       
         l_clean_counter -= 1;
         clean[ index_2_physical[ l_act_block_index_p ] ] = false;
         l_act_page_p = 0;
+
+        l_act_block_index_p = 0;
+        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < (N_PHY_BLOCKS / 2) ){
+            l_act_block_index_p += 1;
+        }       
     }else{
         //page + 1 < block size
         l_act_page_p += 1;
