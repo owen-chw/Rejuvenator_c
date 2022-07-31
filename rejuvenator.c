@@ -272,6 +272,16 @@ void _w(int d, int pb, int pg){
     //pass
 }
 
+/*
+*    API
+*    read from physical block address and page number
+*    :param pb: physical block address
+*    :param pg: physical page number
+*    :return:
+*/
+int _r(int pb, int pg){
+    //pass
+}
 void _update_lru(int lb, int lp){
 
 }
