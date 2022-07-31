@@ -133,13 +133,14 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         //page + 1 == block size
         //move the high pointer to the next clean block
         //search a clean block from the head of the high number list
-        h_act_block_index_p = N_PHY_BLOCKS / 2;
-        while(clean[index_2_physical[h_act_block_index_p]] == false){
-            h_act_block_index_p ++;
-        }
         h_clean_counter -= 1;
         clean[index_2_physical[h_act_block_index_p]] = false;
         h_act_page_p = 0;
+
+        h_act_block_index_p = N_PHY_BLOCKS / 2;
+        while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
+            h_act_block_index_p ++;
+        }
     }else{
         //page + 1 < block size
         h_act_page_p +=1;
