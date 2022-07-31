@@ -263,7 +263,44 @@ int _get_erase_count_by_idx(int idx){
 *    :return victim_idx
 */
 int _find_vb(int start_idx, int end_idx){
+    int idx = start_idx;
+    int vic_idx = idx;
+    int n_of_max_invalid_or_clean_page = 0;
+    
+    while(idx != end_idx){
+        int pid = index_2_physical[idx]; // get physical block id
 
+        //ignore the block within the list of erase_cnt= (min_wear + tau)
+        if(_get_erase_count_by_idx(idx) >= min_wear() + tau){
+            continue;
+        }
+        //ignore the block indexed by either active pointer
+        if (idx == h_act_block_index_p || idx == l_act_block_index_p){
+            continue;
+        }
+        //ignore the block with all clean pages
+        // this implementation is different from pseudo code
+        int clean_page_counter = 0;
+        int invalid_page_counter = 0;
+        for(int pp = 0 ; pp < N_PAGE ; pp++){
+            if (phy_page_info[pid][pp] == CLEAN){
+                clean_page_counter ++;
+            }else if(phy_page_info[pid][pp] ==  INVALID){
+                invalid_page_counter ++;
+            }
+        }
+        if (clean_page_counter == N_PAGE){
+            //ignore the block with all clean pages
+            continue;
+        }
+        int n_of_invalid_or_clean_page = clean_page_counter + invalid_page_counter;
+        if(n_of_invalid_or_clean_page >= n_of_max_invalid_or_clean_page){
+            vic_idx = idx;
+            n_of_max_invalid_or_clean_page = n_of_invalid_or_clean_page;
+        }
+        idx++;
+    }
+    return vic_idx;
 }
 
 /*
