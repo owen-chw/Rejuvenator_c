@@ -256,7 +256,7 @@ int max_wear(void){
 *    :return: erase count
 */
 int _get_erase_count_by_idx(int idx){
-
+//TODO
 }
 /*
 *find a victim block from [erase_count_start, erase_count_end)
@@ -306,9 +306,41 @@ int _find_vb(int start_idx, int end_idx){
 /*
 * this is similiar with _find_vb
 * but it doesn't ignore blocks in Maxwear
+*   :return: most_clean_efficient_idx
 */ 
 int _get_most_clean_efficient_block_idx(void){
+    int most_efficient_idx = 0;
+    int n_of_max_invalid_or_clean_page = 0;
 
+    for(int idx = 0 ; idx < N_PHY_BLOCKS ; idx++){
+        int pid = index_2_physical[idx];    // get physical block id
+
+         //ignore the block indexed by either active pointer
+        if (idx == h_act_block_index_p || idx == l_act_block_index_p){
+            continue;
+        }
+        //ignore the block with all clean pages
+        // this implementation is different from pseudo code
+        int clean_page_counter = 0;
+        int invalid_page_counter = 0;
+        for(int pp = 0 ; pp < N_PAGE ; pp++){
+            if (phy_page_info[pid][pp] == CLEAN){
+                clean_page_counter ++;
+            }else if(phy_page_info[pid][pp] ==  INVALID){
+                invalid_page_counter ++;
+            }
+        }       
+        if (clean_page_counter == N_PAGE){
+            //ignore the block with all clean pages
+            continue;
+        }
+        int n_of_invalid_or_clean_page = clean_page_counter + invalid_page_counter;
+        if(n_of_invalid_or_clean_page >= n_of_max_invalid_or_clean_page){
+            most_efficient_idx = idx;
+            n_of_max_invalid_or_clean_page = n_of_invalid_or_clean_page;
+        }
+    }
+    return most_efficient_idx;
 }
 
 void _erase_block_data(int idx){
