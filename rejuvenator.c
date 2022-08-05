@@ -542,8 +542,21 @@ void replace_and_update(int la){
     }
 }
 
+/*
+*   if la is in cache, la is a hot page
+*   :param lb: logical block
+*   :param lp: logical page
+*   :return: if la is in cache, then return true
+*/
 bool isHotPage(int lb, int lp){
-
+    int la = lb * N_PAGE + lp;  //get logical address (page addressing)
+    // currently brute force, traverse cache once
+    for(int i=0 ; i<LRU_SIZE ; i++){
+        if(cache[i] == la){
+            return true;
+        }
+    }
+    return false;
 }
 
 int main(void){
