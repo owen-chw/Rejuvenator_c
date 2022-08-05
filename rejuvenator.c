@@ -52,6 +52,7 @@ int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
 
 //TODO: init_LRU_cache, updata_lru, is hot page, read, update tau?
+// when to invoke data migration?
 
 /*
 * initialize
@@ -256,7 +257,7 @@ int max_wear(void){
 *    :return: erase count
 */
 int _get_erase_count_by_idx(int idx){
-    for(int cur = 0 ; cur < N_PHY_BLOCKS ; cur++){
+    for(int cur = 0 ; cur < MAX_WEAR_CNT ; cur++){
         if (erase_count_index[cur] > idx){
             return cur;
         }
