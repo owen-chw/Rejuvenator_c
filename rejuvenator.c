@@ -55,7 +55,7 @@ int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, eac
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
 int chance_index_p = 0;                 //index pointer in chance_arr
  
-//TODO:  updata_lru, is hot page, read, update tau?
+//TODO:   read, update tau?
 // when to invoke data migration?
 
 /*
@@ -504,9 +504,9 @@ int _get_head_idx(int erase_count){
 */
 void _update_lru(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get locical address (page addressing)
-    int exist = find_and_update(la);    //check whether la in cache or not
+    int exist = _find_and_update(la);    //check whether la in cache or not
     if(!exist){
-        replace_and_update(la);     //if la is not in cache, then update cache
+        _replace_and_update(la);     //if la is not in cache, then update cache
     } 
 }
 
@@ -515,7 +515,7 @@ void _update_lru(int lb, int lp){
 *   :param la: logical address
 *   :return: if la in cache, then return true; else return false
 */
-bool find_and_update(int la){
+bool _find_and_update(int la){
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
             chance_arr[i] = true;
@@ -529,7 +529,7 @@ bool find_and_update(int la){
 *   :param la: logical address
 *   :return:
 */
-void replace_and_update(int la){
+void _replace_and_update(int la){
     while(1){
         if(chance_arr[chance_index_p] == false){
             cache[chance_index_p] = la;
