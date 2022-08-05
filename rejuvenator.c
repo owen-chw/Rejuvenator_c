@@ -45,8 +45,8 @@ int h_act_page_p = 0;   //high active page pointer for physical page
 int l_act_block_index_p = 0;    //low active block pointer based on index_2_physical
 int l_act_page_p = 0;   //low active page pointer for physical page
 
-int l_to_p[N_LOG_BLOCKS][N_PAGE] = {-1};  //page table: [lb][lp] -> physical address(by page addressing)
-int phy_page_info[N_PHY_BLOCKS][N_PAGE] = {CLEAN};  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
+int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
+int phy_page_info[N_PHY_BLOCKS][N_PAGE];  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
@@ -61,6 +61,19 @@ void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
     }
+
+    for(int i=0 ; i<N_LOG_BLOCKS ; i++){
+        for(int j=0 ; j<N_PAGE ; j++){
+            l_to_p[i][j] = -1;
+        }
+    }
+
+    for(int i=0 ; i<N_PHY_BLOCKS ; i++){
+        for(int j=0 ; j<N_PAGE ; j++){
+            phy_page_info[i][j] = CLEAN;
+        }
+    }
+
     l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
     h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
 }
