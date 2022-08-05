@@ -51,7 +51,7 @@ int phy_page_info[N_PHY_BLOCKS][N_PAGE];  //page information it can be INVALID, 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
 
-int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation
+int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, each element store logical address(page addressing)
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
 int chance_index_p = 0;                 //index pointer in chance_arr
  
@@ -496,7 +496,25 @@ int _get_head_idx(int erase_count){
     }
 }
 
+/*
+*   update lru_cache after write
+*   :param lb: logical block ID
+*   :param lp: logical page offset
+*   :return:
+*/
 void _update_lru(int lb, int lp){
+    int la = lb * N_PAGE + lp;  //get locical address (page addressing)
+    int exist = find_and_update(la);    //check whether la in cache or not
+    if(!exist){
+        replace_and_update(la);     //if la is not in cache, then update cache
+    } 
+}
+
+bool find_and_update(int la){
+
+}
+
+void replace_and_update(int la){
 
 }
 
