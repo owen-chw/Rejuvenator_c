@@ -525,8 +525,21 @@ bool find_and_update(int la){
     return false;
 }
 
+/*  find an entry of no chance, replace it with la, update chance_arr
+*   :param la: logical address
+*   :return:
+*/
 void replace_and_update(int la){
-
+    while(1){
+        if(chance_arr[chance_index_p] == false){
+            cache[chance_index_p] = la;
+            chance_index_p = (chance_index_p + 1) % LRU_SIZE;
+            return;
+        }else{
+            chance_arr[chance_index_p] = false;
+            chance_index_p = (chance_index_p + 1) % LRU_SIZE;
+        }
+    }
 }
 
 bool isHotPage(int lb, int lp){
