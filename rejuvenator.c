@@ -14,7 +14,7 @@
 #define N_PHY_BLOCKS    150     //number of physical blocks in disk
 #define N_LOG_BLOCKS    100     //number of logical blocks in disk (< N_PHY_BLOCKS)
 #define N_PAGE          100     //number of page in a block
-#define LRU_SIZE        100     //lru size by page
+#define LRU_SIZE        100     //lru cache size by page
 #define MAX_WEAR_CNT    1000     //user defined constant
 
 int tau = 20;     //max_wear <= min_wear + tau
@@ -51,7 +51,11 @@ int phy_page_info[N_PHY_BLOCKS][N_PAGE];  //page information it can be INVALID, 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
 
-//TODO: init_LRU_cache, updata_lru, is hot page, read, update tau?
+int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation
+bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
+int chance_index_p = 0;                 //index pointer in chance_arr
+ 
+//TODO:  updata_lru, is hot page, read, update tau?
 // when to invoke data migration?
 
 /*
