@@ -510,8 +510,19 @@ void _update_lru(int lb, int lp){
     } 
 }
 
+/*
+*   check whether logical addr la in cache
+*   :param la: logical address
+*   :return: if la in cache, then return true; else return false
+*/
 bool find_and_update(int la){
-
+    for(int i=0 ; i<LRU_SIZE ; i++){
+        if(cache[i] == la){
+            chance_arr[i] = true;
+            return true;
+        }
+    }
+    return false;
 }
 
 void replace_and_update(int la){
