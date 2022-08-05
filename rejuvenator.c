@@ -375,6 +375,8 @@ void _erase_block_data(int idx){
     
     //erase the block by disk erase API
     _erase_block(pb);
+    //update block clean status
+    clean[pb] = true;
     //update erase count for pb
     _increase_erase_count(idx);
 }
