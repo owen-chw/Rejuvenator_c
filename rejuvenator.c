@@ -278,10 +278,12 @@ int _find_vb(int start_idx, int end_idx){
 
         //ignore the block within the list of erase_cnt= (min_wear + tau)
         if(_get_erase_count_by_idx(idx) >= min_wear() + tau){
+            idx += 1;
             continue;
         }
         //ignore the block indexed by either active pointer
         if (idx == h_act_block_index_p || idx == l_act_block_index_p){
+            idx += 1;
             continue;
         }
         //ignore the block with all clean pages
@@ -297,6 +299,7 @@ int _find_vb(int start_idx, int end_idx){
         }
         if (clean_page_counter == N_PAGE){
             //ignore the block with all clean pages
+            idx += 1;
             continue;
         }
         int n_of_invalid_or_clean_page = clean_page_counter + invalid_page_counter;
