@@ -7,7 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <stdbool.h>o
+#include <assert.h>
 
 #define CLEAN           (-1)
 #define INVALID         (-2)
@@ -55,7 +56,7 @@ int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, eac
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
 int chance_index_p = 0;                 //index pointer in chance_arr
  
-//TODO:   read, update tau?
+//TODO: update tau?
 // when to invoke data migration?
 
 /*
@@ -80,6 +81,21 @@ void initialize(void){
 
     l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
     h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
+}
+
+/*
+*   read major function
+*   :param lb: logical block
+*   :param lp: logical page
+*   :return: return data in the page
+*/
+int read(int lb, int lp){
+    int pa = l_to_p[lb][lp];    //lookup page table to get physical address (page addressing)
+    assert(pa != -1);   //when pa == -1, logical address map to nothing => error
+    int pb = pa / N_PAGE;   //get physical block
+    int pp = pa % N_PAGE;   //get physical page
+    int data = _r(pb, pp);  //use api to read from the address
+    return data;
 }
 
 /*
@@ -461,7 +477,7 @@ void _w(int d, int pb, int pg){
 *    read from physical block address and page number
 *    :param pb: physical block address
 *    :param pg: physical page number
-*    :return:
+*    :return: data in this page
 */
 int _r(int pb, int pg){
     //pass
