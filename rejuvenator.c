@@ -301,7 +301,7 @@ int _get_erase_count_by_idx(int idx){
             return cur;
         }
     }
-    return N_PHY_BLOCKS;    //why?
+    return MAX_WEAR_CNT;    
 }
 /*
 *find a victim block from [erase_count_start, erase_count_end)
