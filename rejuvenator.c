@@ -247,9 +247,15 @@ void gc(void){
 */
 void data_migration(void){
     int idx = _get_most_clean_efficient_block_idx();
-    if( min_wear() + tau <= _get_erase_count_by_idx(idx) ){     //why don't use max_wear() ? why < ?
+     // max_wear may > min_wear+tau after adapting tau
+     // max_wear may < min_wear+tau when the rejuvenator just start
+    if( min_wear() + tau <= _get_erase_count_by_idx(idx) ){     // max_wear may > min_wear+tau after adapting tau
         // move all the block in min_wear
-        idx = erase_count_index[ min_wear() - 1 ];  //set index to the front of erase count i   //if min_wear()=0 ?
+        if(min_wear() == 0){
+            idx = 0;
+        }else{
+            idx = erase_count_index[min_wear() - 1]; // set index to the front of erase count i   
+        }
         int end_idx = erase_count_index[ min_wear() ];
         while(idx < end_idx){
             _erase_block_data(idx);
@@ -268,7 +274,7 @@ int min_wear(void){
             return i;
         }
     }
-    return N_PHY_BLOCKS;    //why?
+    return 0;    //hapens when rejuvenator just start, for all i, erase_count_index[i] == N_PHY_Blocks 
 
 }
 
