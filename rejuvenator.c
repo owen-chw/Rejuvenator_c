@@ -4,6 +4,7 @@
  * 2022/07/29                                                  *
  * page addressing                                             *
  * We store logical address info in spare area in this version *
+ * We replace phy_page_info array with is_valid_page array.    *
  * / valid                                                     *
  * \ not valid / clean                                         *
  *             \ invalid                                       *
@@ -51,7 +52,6 @@ int l_act_block_index_p = 0;    //low active block pointer based on index_2_phys
 int l_act_page_p = 0;   //low active page pointer for physical page
 
 int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
-int phy_page_info[N_PHY_BLOCKS][N_PAGE];  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
 bool is_valid_page[N_PHY_BLOCKS][N_PAGE];   //show whether this page is valid or not: [pb][pp] -> bool
 
 int l_clean_counter; //number of clean blocks in the lower number list
@@ -80,7 +80,6 @@ void initialize(void){
 
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         for(int j=0 ; j<N_PAGE ; j++){
-            //phy_page_info[i][j] = CLEAN;
             is_valid_page[i][j] = true;
         }
     }
@@ -163,13 +162,11 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         int old_addr = l_to_p[lb][lp];
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
-        //phy_page_info[opb][opp] = INVALID;
         is_valid_page[opb][opp] = false;
     }
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
     int la = lb * N_PAGE + lp;
-    //phy_page_info[pb][pp] = la;
     _write_spare_area(pb, pp, la);
 
     //update active pointer value
@@ -209,13 +206,11 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         int old_addr = l_to_p[lb][lp];
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
-        //phy_page_info[opb][opp] = INVALID;      
         is_valid_page[opb][opp] = false;
     }
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
     int la = lb * N_PAGE + lp;
-    //phy_page_info[pb][pp] = la;
     _write_spare_area(pb, pp, la);
 
     //update active pointer value
@@ -381,20 +376,18 @@ int _get_most_clean_efficient_block_idx(void){
         }
         //ignore the block with all clean pages
         // this implementation is different from pseudo code
-        int clean_page_counter = 0;
-        int invalid_page_counter = 0;
-        for(int pp = 0 ; pp < N_PAGE ; pp++){
-            if (phy_page_info[pid][pp] == CLEAN){
-                clean_page_counter ++;
-            }else if(phy_page_info[pid][pp] ==  INVALID){
-                invalid_page_counter ++;
-            }
-        }       
-        if (clean_page_counter == N_PAGE){
-            //ignore the block with all clean pages
+        if(clean[pid] == true){
+            idx += 1;
             continue;
         }
-        int n_of_invalid_or_clean_page = clean_page_counter + invalid_page_counter;
+
+        int n_of_invalid_or_clean_page = 0;
+        for(int pp = 0 ; pp < N_PAGE ; pp++){
+            if(is_valid_page[pid][pp] == false){
+                n_of_invalid_or_clean_page +=1;
+            }
+        }
+                
         if(n_of_invalid_or_clean_page >= n_of_max_invalid_or_clean_page){
             most_efficient_idx = idx;
             n_of_max_invalid_or_clean_page = n_of_invalid_or_clean_page;
@@ -420,7 +413,6 @@ void _erase_block_data(int idx){
             int lp = la % N_PAGE;   //get logical page offset
             _write_helper(_r(pb,pp), lb, lp);
         }
-        //phy_page_info[pb][pp] = CLEAN;
         is_valid_page[pb][pp] = false;
         pp++;
     }
