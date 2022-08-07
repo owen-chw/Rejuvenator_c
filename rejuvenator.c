@@ -48,6 +48,7 @@ int l_act_page_p = 0;   //low active page pointer for physical page
 
 int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
 int phy_page_info[N_PHY_BLOCKS][N_PAGE];  //page information it can be INVALID, CLEAN, or int: logical address (by page addressing)
+bool is_valid_page[N_PHY_BLOCKS][N_PAGE];   //show whether this page is valid or not
 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
@@ -75,7 +76,8 @@ void initialize(void){
 
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         for(int j=0 ; j<N_PAGE ; j++){
-            phy_page_info[i][j] = CLEAN;
+            //phy_page_info[i][j] = CLEAN;
+            is_valid_page[i][j] = true;
         }
     }
 
@@ -157,7 +159,8 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         int old_addr = l_to_p[lb][lp];
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
-        phy_page_info[opb][opp] = INVALID;
+        //phy_page_info[opb][opp] = INVALID;
+        is_valid_page[opb][opp] = false;
     }
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
@@ -492,6 +495,17 @@ void _w(int d, int pb, int pg){
 */
 int _r(int pb, int pg){
     //pass
+}
+
+/*
+*    DISK API
+*    read logical page info from the space area
+*    :param pb: physical block address
+*    :param pp: physical page address
+*    :return logical address: 
+*/
+int _read_spare_area(int pb, int pp){
+    return 100;
 }
 
 /*
