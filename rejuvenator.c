@@ -161,6 +161,8 @@ void _write_2_higher_number_list(int d, int lb, int lp){
     }
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
+    int la = lb * N_PAGE + lp;
+    phy_page_info[pb][pp] = la;
 
     //update active pointer value
     if(h_act_page_p + 1 == N_PAGE ){
@@ -203,6 +205,8 @@ void _write_2_lower_number_list(int d, int lb, int lp){
     }
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
+    int la = lb * N_PAGE + lp;
+    phy_page_info[pb][pp] = la;
 
     //update active pointer value
     if (l_act_page_p + 1 == N_PAGE){
@@ -280,7 +284,7 @@ int min_wear(void){
 
 /*
 *    Get the erase count of max_wear value
-*    :return: max_wear value
+*    :return: max_wear value; if error, return -1
 */
 int max_wear(void){
     for(int i = 0 ; i<MAX_WEAR_CNT ; i++){
@@ -288,6 +292,7 @@ int max_wear(void){
             return i;
         }
     }
+    return -1;
 }
 
 /*
