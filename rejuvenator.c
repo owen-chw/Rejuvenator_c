@@ -509,6 +509,17 @@ int _read_spare_area(int pb, int pp){
 }
 
 /*
+*    DISK API
+*    write logical page info into the space area
+*    :param pb: physical block address
+*    :param pp: physical page address
+*    :param la: logical address
+*/
+void _write_spare_area(int pb, int pp, int la){
+
+}
+
+/*
 *    API 
 *    erase block
 *    :param pb: physical block address
