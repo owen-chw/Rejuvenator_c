@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>o
+#include <stdbool.h>
 #include <assert.h>
 
 #define CLEAN           (-1)
@@ -80,7 +80,7 @@ void initialize(void){
 
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         for(int j=0 ; j<N_PAGE ; j++){
-            is_valid_page[i][j] = true;
+            is_valid_page[i][j] = false; 
         }
     }
 
@@ -283,7 +283,7 @@ int min_wear(void){
             return i;
         }
     }
-    return 0;    //hapens when rejuvenator just start, for all i, erase_count_index[i] == N_PHY_Blocks 
+    return -1;    //hapens when rejuvenator just start, for all i, erase_count_index[i] == N_PHY_Blocks 
 
 }
 
