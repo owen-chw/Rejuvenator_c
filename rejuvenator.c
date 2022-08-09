@@ -1,14 +1,16 @@
-/***************************************************************
- * modified rejuvenator in C                                   *
- * Hong Wen, Chen                                              *
- * 2022/07/29                                                  *
- * page addressing                                             *
- * We store logical address info in spare area in this version *
- * We replace phy_page_info array with is_valid_page array.    *
- * / valid                                                     *
- * \ not valid / clean                                         *
- *             \ invalid                                       *
- **************************************************************/
+/************************************************************************************
+ * modified rejuvenator in C                                                        *
+ * Hong Wen, Chen                                                                   *
+ * 2022/07/29                                                                       *
+ * page addressing                                                                  *
+ * We store logical address info in spare area in this version                      *
+ * We replace phy_page_info array with is_valid_page array.                         *
+ * / valid                                                                          *
+ * \ not valid / clean                                                              *
+ *             \ invalid                                                            *
+ * Rule of triggering GC is modified to l_clean_cnt+h_clean_cnt < 1 in this version *
+ * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt == 1     *
+ ***********************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,7 +117,7 @@ void write(int d, int lb, int lp)
     _write_helper(d, lb, lp);
     _update_lru(lb, lp);
     //if there is no clean block then GC
-    if (h_clean_counter < 1){
+    if (h_clean_counter + l_clean_counter < 1){
         gc();
     }
 }
@@ -134,13 +136,7 @@ void _write_helper(int d, int lb, int lp){
         _write_2_higher_number_list(d, lb, lp);
     }else{
         //hot data
-        if(l_clean_counter < 1){
-            //if there is no clean block in the lower number list, write to the higher number list
-            _write_2_higher_number_list(d, lb, lp);
-        }else{
-            //write to lower number list
-            _write_2_lower_number_list(d, lb, lp);
-        }
+        _write_2_lower_number_list(d, lb, lp);
     }
 }
 
@@ -173,8 +169,13 @@ void _write_2_higher_number_list(int d, int lb, int lp){
     if(h_act_page_p + 1 == N_PAGE ){
         //page + 1 == block size
         //move the high pointer to the next clean block
-        //search a clean block from the head of the high number list
-        h_clean_counter -= 1;
+        //firstly search a clean block from the head of the high number list
+        if( h_act_block_index_p < (N_PHY_BLOCKS/2) ){
+            l_clean_counter -= 1;
+        }else{
+            h_clean_counter -= 1;
+        }
+
         clean[index_2_physical[h_act_block_index_p]] = false;
         h_act_page_p = 0;
 
@@ -182,6 +183,15 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
             h_act_block_index_p ++;
         }
+
+        //if no clean blocks in higher number list, then search clean block in lower number list
+        if(h_act_block_index_p == N_PHY_BLOCKS){
+            h_act_block_index_p = 0;
+        }
+        while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
+            h_act_block_index_p ++;
+        }
+
     }else{
         //page + 1 < block size
         h_act_page_p +=1;
@@ -218,12 +228,19 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         //page + 1 == block size
         //move the low pointer to the next clean block
         //search a clean block from the head of the low number list 
-        l_clean_counter -= 1;
+        if(l_act_block_index_p < (N_PHY_BLOCKS / 2)){
+            l_clean_counter -= 1;
+        }else{
+            h_clean_counter -= 1;
+        }
+
         clean[ index_2_physical[ l_act_block_index_p ] ] = false;
         l_act_page_p = 0;
 
+        // firstly we search clean block in lower number list
+        // if we can't find any clean block in lower number list, then we search in higher number list
         l_act_block_index_p = 0;
-        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < (N_PHY_BLOCKS / 2) ){
+        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < N_PHY_BLOCKS ){
             l_act_block_index_p += 1;
         }       
     }else{
