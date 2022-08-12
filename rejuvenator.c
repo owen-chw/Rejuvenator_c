@@ -6,7 +6,7 @@
  * We store logical address info in spare area in this version                      *
  * We replace phy_page_info array with is_valid_page array.                         *
  * / valid                                                                          *
- * \ not valid / clean                                                              *
+ * \ not valid / clean (active block is not clean)                                  *
  *             \ invalid                                                            *
  * Rule of triggering GC is modified to l_clean_cnt+h_clean_cnt < 1 in this version *
  * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt == 1     *
@@ -55,6 +55,7 @@ int l_act_page_p = 0;   //low active page pointer for physical page
 
 int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
 bool is_valid_page[N_PHY_BLOCKS][N_PAGE];   //show whether this page is valid or not: [pb][pp] -> bool
+int spare_area[N_PHY_BLOCKS][N_PAGE];   //to simulate spare area in the disk: [pb][pp] -> logical address
 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
@@ -83,6 +84,7 @@ void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         for(int j=0 ; j<N_PAGE ; j++){
             is_valid_page[i][j] = false; 
+            spare_area[i][j] = -1;
         }
     }
 
@@ -519,7 +521,7 @@ int _r(int pb, int pg){
 *    :return logical address: 
 */
 int _read_spare_area(int pb, int pp){
-    return 100;
+    return spare_area[pb][pp];
 }
 
 /*
@@ -530,7 +532,7 @@ int _read_spare_area(int pb, int pp){
 *    :param la: logical address
 */
 void _write_spare_area(int pb, int pp, int la){
-
+    spare_area[pb][pp] = la;
 }
 
 /*
