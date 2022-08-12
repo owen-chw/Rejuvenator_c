@@ -561,24 +561,6 @@ void _erase_block(int pb){
     //pass
 }
 
-/*
-*    Get the head index of the erase-count in the index_2_physical
-*    :param erase_count: erase count i
-*    :return: the head index of erase_cnt=i in the index_2_physical
-*               if erase_cnt=i is an empty list, then return -1
-*/
-int _get_head_idx(int erase_count){
-    if(erase_count == 0){
-        return 0;
-    }else{
-        if(erase_count_index[erase_count - 1] >= erase_count_index[erase_count]){
-            //erase_count = i is an empty list, no head
-            return -1;
-        }else{
-            return erase_count_index[erase_count - 1];
-        }
-    }
-}
 
 /*
 *   update lru_cache after write
