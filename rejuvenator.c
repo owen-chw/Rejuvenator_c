@@ -9,7 +9,7 @@
  * \ not valid / clean (active block is not clean)                                  *
  *             \ invalid                                                            *
  * Rule of triggering GC is modified to l_clean_cnt+h_clean_cnt < 1 in this version *
- * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt == 1     *
+ * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt >= 1     *
  ***********************************************************************************/
 
 #include <stdio.h>
@@ -55,7 +55,7 @@ int l_act_page_p = 0;   //low active page pointer for physical page
 
 int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
 bool is_valid_page[N_PHY_BLOCKS][N_PAGE];   //show whether this page is valid or not: [pb][pp] -> bool
-int spare_area[N_PHY_BLOCKS][N_PAGE];   //to simulate spare area in the disk: [pb][pp] -> logical address
+int spare_area[N_PHY_BLOCKS][N_PAGE];   //to simulate spare area in the disk: [pb][pp] -> logical address ; this is called "phy_page_info_disk_api" in pseudo code
 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
@@ -90,6 +90,12 @@ void initialize(void){
 
     l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
     h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
+
+    //active block is not a clean block
+    l_clean_counter -= 1;
+    h_clean_counter -= 1;
+    clean[l_act_block_index_p] = false;
+    clean[h_act_block_index_p] = false;
 }
 
 /*
@@ -103,6 +109,7 @@ int read(int lb, int lp){
     assert(pa != -1);   //when pa == -1, logical address map to nothing => error
     int pb = pa / N_PAGE;   //get physical block
     int pp = pa % N_PAGE;   //get physical page
+    assert(is_valid_page[pb][pp] != false); //check if it is a vlaid page
     int data = _r(pb, pp);  //use api to read from the address
     return data;
 }
@@ -150,11 +157,7 @@ void _write_helper(int d, int lb, int lp){
 *    :return:
 */
 void _write_2_higher_number_list(int d, int lb, int lp){
-    int pb = index_2_physical[h_act_block_index_p]; //get active block ID
-    int pp = h_act_page_p;  //get active page
-    _w(d, pb, pp);  //write data
-
-    //update logical to physical mapping
+    //invalidate old physical address
     if(l_to_p[lb][lp] != -1){
         //clean previous physical address from the same logical address
         int old_addr = l_to_p[lb][lp];
@@ -162,23 +165,24 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
         is_valid_page[opb][opp] = false;
     }
+
+    //write data to new physical address
+    int pb = index_2_physical[h_act_block_index_p]; //get active block ID
+    int pp = h_act_page_p;  //get active page
+    _w(d, pb, pp);  //write data
+
+    //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
     int la = lb * N_PAGE + lp;
     _write_spare_area(pb, pp, la);
+    is_valid_page[pb][pp] = true;
 
     //update active pointer value
     if(h_act_page_p + 1 == N_PAGE ){
         //page + 1 == block size
         //move the high pointer to the next clean block
         //firstly search a clean block from the head of the high number list
-        if( h_act_block_index_p < (N_PHY_BLOCKS/2) ){
-            l_clean_counter -= 1;
-        }else{
-            h_clean_counter -= 1;
-        }
-
-        clean[index_2_physical[h_act_block_index_p]] = false;
         h_act_page_p = 0;
 
         h_act_block_index_p = N_PHY_BLOCKS / 2;
@@ -194,6 +198,13 @@ void _write_2_higher_number_list(int d, int lb, int lp){
             h_act_block_index_p ++;
         }
 
+        if( h_act_block_index_p < (N_PHY_BLOCKS/2) ){
+            l_clean_counter -= 1;
+        }else{
+            h_clean_counter -= 1;
+        }
+
+        clean[index_2_physical[h_act_block_index_p]] = false;
     }else{
         //page + 1 < block size
         h_act_page_p +=1;
@@ -208,11 +219,7 @@ void _write_2_higher_number_list(int d, int lb, int lp){
 *    :return:
 */
 void _write_2_lower_number_list(int d, int lb, int lp){
-    int pb = index_2_physical[l_act_block_index_p]; //get active block ID
-    int pp = l_act_page_p;  //get active page
-    _w(d, pb, pp);  //write data
-
-    //update logical to physical mapping
+    // invalidate  old physical address
     if(l_to_p[lb][lp] != -1){
         //clean previous physical address from the same logical address
         int old_addr = l_to_p[lb][lp];
@@ -220,23 +227,24 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
         is_valid_page[opb][opp] = false;
     }
+
+    //wirte data to new physical address
+    int pb = index_2_physical[l_act_block_index_p]; //get active block ID
+    int pp = l_act_page_p;  //get active page
+    _w(d, pb, pp);  //write data
+
+    //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
     int la = lb * N_PAGE + lp;
     _write_spare_area(pb, pp, la);
+    is_valid_page[pb][pp] = true;
 
     //update active pointer value
     if (l_act_page_p + 1 == N_PAGE){
         //page + 1 == block size
         //move the low pointer to the next clean block
         //search a clean block from the head of the low number list 
-        if(l_act_block_index_p < (N_PHY_BLOCKS / 2)){
-            l_clean_counter -= 1;
-        }else{
-            h_clean_counter -= 1;
-        }
-
-        clean[ index_2_physical[ l_act_block_index_p ] ] = false;
         l_act_page_p = 0;
 
         // firstly we search clean block in lower number list
@@ -245,6 +253,14 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < N_PHY_BLOCKS ){
             l_act_block_index_p += 1;
         }       
+
+        if(l_act_block_index_p < (N_PHY_BLOCKS / 2)){
+            l_clean_counter -= 1;
+        }else{
+            h_clean_counter -= 1;
+        }
+
+        clean[ index_2_physical[ l_act_block_index_p ] ] = false;
     }else{
         //page + 1 < block size
         l_act_page_p += 1;
