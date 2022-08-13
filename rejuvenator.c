@@ -67,6 +67,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 //TODO: update tau?
 // when to invoke data migration?
 // use _write_spare area in write_2_high/low to invalid P2L, so we don't need invalidate page in _erase_block_data ?
+//In increase_erase_cnt, how about l_active_block_pointer? Dose idx always < last_block idx?
 
 /*
 * initialize
@@ -503,20 +504,31 @@ void _increase_erase_count(int idx){
     //swap the index_2_physical[idx] with the element which has teh same erase count
     int erase_count = _get_erase_count_by_idx(idx); //get the erase cnt of idx
     int last_block_idx = erase_count_index[erase_count] - 1;    //get the ending index which has the same erase cnt
+
+    // let active block pointer stay with the same blockID
+    if(last_block_idx == h_act_block_index_p){
+        h_act_block_index_p = idx;
+    }
+
+    //need to check if idx and last_block_idx are clean?
+    // if one of them are not clean, then need to update clean counter during swap
+    if(clean[index_2_physical[last_block_idx]] == false){
+        if(idx < (N_PHY_BLOCKS/2) && last_block_idx >= (N_PHY_BLOCKS/2)){
+            l_clean_counter -= 1;
+            h_clean_counter += 1;
+        }
+        else if(idx >= (N_PHY_BLOCKS/2) && last_block_idx < (N_PHY_BLOCKS/2)){
+            l_clean_counter += 1;
+            h_clean_counter -=1;
+        }
+    }
+
     int temp = index_2_physical[idx];
     index_2_physical[idx] = index_2_physical[last_block_idx];
     index_2_physical[last_block_idx] = temp;
 
     // update the erase_count boundary index
     erase_count_index[erase_count] -= 1;
-
-    idx = last_block_idx;   // because the block ID in old idx is now in last_block_idx
-    //update clean counter
-    if(idx < (N_PHY_BLOCKS/2)){
-        l_clean_counter += 1;
-    }else{
-        h_clean_counter += 1;
-    }
 }
 
 /*
