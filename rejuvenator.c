@@ -66,6 +66,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 //TODO: update tau?
 // when to invoke data migration?
+// use _write_spare area in write_2_high/low to invalid P2L, so we don't need invalidate page in _erase_block_data ?
 
 /*
 * initialize
@@ -164,6 +165,7 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
         is_valid_page[opb][opp] = false;
+        _write_spare_area(opb, opp, -1);
     }
 
     //write data to new physical address
@@ -226,6 +228,7 @@ void _write_2_lower_number_list(int d, int lb, int lp){
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
         is_valid_page[opb][opp] = false;
+        _write_spare_area(opb, opp, -1);
     }
 
     //wirte data to new physical address
@@ -348,6 +351,7 @@ int _get_erase_count_by_idx(int idx){
     }
     return MAX_WEAR_CNT;    
 }
+
 /*
 *find a victim block from [erase_count_start, erase_count_end)
 *    :return victim_idx
@@ -448,6 +452,7 @@ void _erase_block_data(int idx){
             int lp = la % N_PAGE;   //get logical page offset
             _write_helper(_r(pb,pp), lb, lp);
         }
+        _write_spare_area(pb, pp, -1);
         is_valid_page[pb][pp] = false;
         pp++;
     }
