@@ -461,6 +461,14 @@ void _erase_block_data(int idx){
     _erase_block(pb);
     //update block clean status
     clean[pb] = true;
+
+    //update clean counter
+    if(idx < (N_PHY_BLOCKS/2) ){
+        l_clean_counter += 1;
+    }else{
+        h_clean_counter += 1;
+    }
+
     //update erase count for pb
     _increase_erase_count(idx);
 }
