@@ -17,13 +17,14 @@
 #include <stdbool.h>
 #include <assert.h>
 
-#define CLEAN           (-1)
-#define INVALID         (-2)
-#define N_PHY_BLOCKS    150     //number of physical blocks in disk
-#define N_LOG_BLOCKS    100     //number of logical blocks in disk (< N_PHY_BLOCKS)
-#define N_PAGE          100     //number of page in a block
-#define LRU_SIZE        100     //lru cache size by page
-#define MAX_WEAR_CNT    1000     //user defined constant
+#define CLEAN               (-1)
+#define INVALID             (-2)
+#define N_PHY_BLOCKS        150     //number of physical blocks in disk
+#define N_LOG_BLOCKS        100     //number of logical blocks in disk (< N_PHY_BLOCKS)
+#define N_PAGE              100     //number of page in a block
+#define LRU_SIZE            100     //lru cache size by page
+#define MAX_WEAR_CNT        1000    //user defined constant
+#define DATA_MIGRATION_FREQ 100     //data migration frequency: after doing i times of GC, do data_migration once
 
 int tau = 20;     //max_wear <= min_wear + tau
 bool clean[N_PHY_BLOCKS] = {true};  // clean bit for physical block; phy block ID -> bool
@@ -68,6 +69,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 // when to invoke data migration?
 // use _write_spare area in write_2_high/low to invalid P2L, so we don't need invalidate page in _erase_block_data ?
 //In increase_erase_cnt, how about l_active_block_pointer? Dose idx always < last_block idx?
+// In pseudo code, data_migration: leak exception of min_wear = 0 ;_get_erase_cnt_by_idx: range should be MAX_Wear_cnt
 
 /*
 * initialize
@@ -287,6 +289,13 @@ void gc(void){
     }else{
         int v_idx = _find_vb(0, N_PHY_BLOCKS);
         _erase_block_data(v_idx);
+    }
+
+    //invoke data migration after do GC DATA_MIGRATION_FREQ times
+    static int GC_counter = 0;
+    GC_counter += 1;
+    if (GC_counter % DATA_MIGRATION_FREQ == 0){
+        data_migration();
     }
 }
 
