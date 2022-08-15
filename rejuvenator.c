@@ -67,7 +67,6 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 //TODO: update tau?
 // when to invoke data migration?
-// In pseudo code, data_migration: leak exception of min_wear = 0 ;_get_erase_cnt_by_idx: range should be MAX_Wear_cnt
 
 /*
 * initialize
