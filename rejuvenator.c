@@ -67,7 +67,6 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 //TODO: update tau?
 // when to invoke data migration?
-// use _write_spare area in write_2_high/low to invalid P2L, so we don't need invalidate page in _erase_block_data ?
 //In increase_erase_cnt, how about l_active_block_pointer? Dose idx always < last_block idx?
 // In write(), gc triger rule
 // In pseudo code, data_migration: leak exception of min_wear = 0 ;_get_erase_cnt_by_idx: range should be MAX_Wear_cnt
@@ -463,8 +462,6 @@ void erase_block_data(int idx){
             int lp = la % N_PAGE;   //get logical page offset
             write_helper(_r(pb,pp), lb, lp);
         }
-        _write_spare_area(pb, pp, -1);
-        is_valid_page[pb][pp] = false;
         pp++;
     }
     
