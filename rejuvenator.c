@@ -67,8 +67,6 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 //TODO: update tau?
 // when to invoke data migration?
-//In increase_erase_cnt, how about l_active_block_pointer? Dose idx always < last_block idx?
-// In write(), gc triger rule
 // In pseudo code, data_migration: leak exception of min_wear = 0 ;_get_erase_cnt_by_idx: range should be MAX_Wear_cnt
 
 /*
@@ -516,6 +514,9 @@ void increase_erase_count(int idx){
     if(last_block_idx == h_act_block_index_p){
         h_act_block_index_p = idx;
     }
+    if(last_block_idx == l_act_block_index_p){
+        l_act_block_index_p = idx;
+    }
 
     //need to check if idx and last_block_idx are clean?
     // if one of them are not clean, then need to update clean counter during swap
@@ -523,10 +524,6 @@ void increase_erase_count(int idx){
         if(idx < (N_PHY_BLOCKS/2) && last_block_idx >= (N_PHY_BLOCKS/2)){
             l_clean_counter -= 1;
             h_clean_counter += 1;
-        }
-        else if(idx >= (N_PHY_BLOCKS/2) && last_block_idx < (N_PHY_BLOCKS/2)){
-            l_clean_counter += 1;
-            h_clean_counter -=1;
         }
     }
 
