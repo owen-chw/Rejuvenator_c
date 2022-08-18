@@ -74,6 +74,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
+        clean[i] = true;
     }
 
     for(int i=0 ; i<N_LOG_BLOCKS ; i++){
@@ -88,6 +89,19 @@ void initialize(void){
             spare_area[i][j] = -1;
         }
     }
+
+    for(int i=0 ; i<LRU_SIZE ; i++){
+        cache[i] = -1;
+    }
+
+    for(int i=0 ; i<MAX_WEAR_CNT ; i++){
+        erase_count_index[i] = N_PHY_BLOCKS;
+    }
+
+    h_act_block_index_p = N_PHY_BLOCKS / 2;
+    h_act_page_p = 0;
+    l_act_block_index_p = 0;
+    l_act_page_p = 0;
 
     l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
     h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
