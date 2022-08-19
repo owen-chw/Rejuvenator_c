@@ -57,6 +57,7 @@ int l_act_page_p = 0;   //low active page pointer for physical page
 int l_to_p[N_LOG_BLOCKS][N_PAGE];  //page table: [lb][lp] -> physical address(by page addressing); initialize to -1
 bool is_valid_page[N_PHY_BLOCKS][N_PAGE];   //show whether this page is valid or not: [pb][pp] -> bool
 int spare_area[N_PHY_BLOCKS][N_PAGE];   //to simulate spare area in the disk: [pb][pp] -> logical address ; this is called "phy_page_info_disk_api" in pseudo code
+int disk[N_PHY_BLOCKS][N_PAGE];     // to simulate physical disk: [pb][pp] -> data in the page
 
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
@@ -67,6 +68,11 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 //TODO: update tau?
 // when to invoke data migration?
+
+
+/*@ ghost
+    int ghost_logical_disk[N_LOG_BLOCKS][N_PAGE];
+*/
 
 /*
 * initialize
@@ -129,12 +135,20 @@ int read(int lb, int lp){
     return data;
 }
 
+
 /*
 * write major function
 *    :param d: data
 *    :param lb: logical block
 *    :param lp: logical page
 *   invariant: h_clean_counter >= 1
+*/
+/*@
+    requires 0 <= lb < N_LOG_BLOCKS && 0 <= lp < N_PAGE;
+    requires (h_clean_counter + l_clean_counter) >= 1;
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
+    ensures (h_clean_counter + l_clean_counter) >= 1;
 */
 void write(int d, int lb, int lp)
 {
@@ -155,7 +169,8 @@ void write(int d, int lb, int lp)
 */
 void write_helper(int d, int lb, int lp){
     //check the logical address is hot or cold
-    if( !isHotPage(lb, lp)){
+    int isHot = isHotPage(lb, lp);
+    if( isHot != 1){
         //cold data
         write_2_higher_number_list(d, lb, lp);
     }else{
@@ -557,7 +572,7 @@ void increase_erase_count(int idx){
 *    :return:
 */
 void _w(int d, int pb, int pg){
-    //pass
+   disk[pb][pg] = d; 
 }
 
 /*
@@ -568,7 +583,7 @@ void _w(int d, int pb, int pg){
 *    :return: data in this page
 */
 int _r(int pb, int pg){
-    //pass
+   return disk[pb][pg];  
 }
 
 /*
@@ -613,7 +628,7 @@ void _erase_block(int pb){
 void update_lru(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get locical address (page addressing)
     int exist = find_and_update(la);    //check whether la in cache or not
-    if(!exist){
+    if(exist != 1){
         replace_and_update(la);     //if la is not in cache, then update cache
     } 
 }
@@ -621,16 +636,16 @@ void update_lru(int lb, int lp){
 /*
 *   check whether logical addr la in cache
 *   :param la: logical address
-*   :return: if la in cache, then return true; else return false
+*   :return: if la in cache, then return 1; else return 0 
 */
-bool find_and_update(int la){
+int find_and_update(int la){
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
             chance_arr[i] = true;
-            return true;
+            return 1;
         }
     }
-    return false;
+    return 0;
 }
 
 /*  find an entry of no chance, replace it with la, update chance_arr
@@ -654,17 +669,17 @@ void replace_and_update(int la){
 *   if la is in cache, la is a hot page
 *   :param lb: logical block
 *   :param lp: logical page
-*   :return: if la is in cache, then return true
+*   :return: if la is in cache, then return 1; else return 0
 */
-bool isHotPage(int lb, int lp){
+int isHotPage(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get logical address (page addressing)
     // currently brute force, traverse cache once
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
-            return true;
+            return 1;
         }
     }
-    return false;
+    return 0;
 }
 
 int main(void){
