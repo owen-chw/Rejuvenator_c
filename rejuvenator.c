@@ -167,6 +167,11 @@ void write(int d, int lb, int lp)
 *    :param lp: logical page number
 *    :return:
 */
+/*@
+    requires 0 <= lb < N_LOG_BLOCKS && 0 <= lp < N_PAGE;
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
+*/
 void write_helper(int d, int lb, int lp){
     //check the logical address is hot or cold
     int isHot = isHotPage(lb, lp);
