@@ -637,6 +637,11 @@ int _read_spare_area(int pb, int pp){
 *    :param pp: physical page address
 *    :param la: logical address
 */
+/*@
+    requires 0 <= pb < N_PHY_BLOCKS && 0 <= pp < N_PAGE && 0 <= la < N_PHY_BLOCKS * N_PAGE;
+    ensures spare_area[pb][pp] == la;
+    assigns spare_area[pb][pp];
+*/
 void _write_spare_area(int pb, int pp, int la){
     spare_area[pb][pp] = la;
 }
