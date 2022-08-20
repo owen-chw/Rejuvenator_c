@@ -191,6 +191,23 @@ void write_helper(int d, int lb, int lp){
 *    :param lp: logical page number
 *    :return:
 */
+/*@
+    requires 0 <= lb < N_LOG_BLOCKS && 0 <= lp < N_PAGE;
+    requires 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
+    ensures is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
+    ensures spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == -1;
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
+    ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
+    ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
+    ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
+    assigns l_to_p[lb][lp], is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE]; 
+    assigns spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE];
+    assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
+    assigns spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+    assigns is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+    assigns h_act_page_p, h_act_block_index_p, clean[index_2_physical[h_act_block_index_p]];
+*/
 void write_2_higher_number_list(int d, int lb, int lp){
     //invalidate old physical address
     if(l_to_p[lb][lp] != -1){
@@ -206,6 +223,9 @@ void write_2_higher_number_list(int d, int lb, int lp){
     int pb = index_2_physical[h_act_block_index_p]; //get active block ID
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
+    /*@ ghost
+        ghost_logical_disk[lb][lp] = d;
+    */
 
     //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
@@ -222,6 +242,10 @@ void write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p = 0;
 
         h_act_block_index_p = N_PHY_BLOCKS / 2;
+        /*@
+            loop assigns h_act_block_index_p;
+            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
+        */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
             h_act_block_index_p ++;
         }
@@ -230,6 +254,10 @@ void write_2_higher_number_list(int d, int lb, int lp){
         if(h_act_block_index_p == N_PHY_BLOCKS){
             h_act_block_index_p = 0;
         }
+        /*@
+            loop assigns h_act_block_index_p;
+            loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
+        */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
             h_act_block_index_p ++;
         }
