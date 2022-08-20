@@ -604,6 +604,13 @@ void increase_erase_count(int idx){
 *    :param pg: physical page
 *    :return:
 */
+/*@
+    requires -2147483648 <= d <= 2147283647 ;
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pg < N_PAGE;
+    ensures disk[pb][pg] == d;
+    assigns disk[pb][pg];
+*/
 void _w(int d, int pb, int pg){
    disk[pb][pg] = d; 
 }
@@ -638,7 +645,9 @@ int _read_spare_area(int pb, int pp){
 *    :param la: logical address
 */
 /*@
-    requires 0 <= pb < N_PHY_BLOCKS && 0 <= pp < N_PAGE && 0 <= la < N_PHY_BLOCKS * N_PAGE;
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pp < N_PAGE ;
+    requires 0 <= la < N_PHY_BLOCKS * N_PAGE;
     ensures spare_area[pb][pp] == la;
     assigns spare_area[pb][pp];
 */
