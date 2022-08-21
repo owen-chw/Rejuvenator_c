@@ -6,10 +6,10 @@
  * We store logical address info in spare area in this version                      *
  * We replace phy_page_info array with is_valid_page array.                         *
  * / valid                                                                          *
- * \ not valid / clean                                                              *
+ * \ not valid / clean  (active block is not clean)                                                              *
  *             \ invalid                                                            *
  * Rule of triggering GC is modified to l_clean_cnt+h_clean_cnt < 1 in this version *
- * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt == 1     *
+ * In this version, we maintain the invariant of l_clean_cnt + h_clean_cnt >= 1     *
  ***********************************************************************************/
 
 #include <stdio.h>
@@ -27,24 +27,24 @@
  #define MAX_WEAR_CNT        1000    //user defined constant
  #define DATA_MIGRATION_FREQ 100     //data migration frequency: after doing i times of GC, do data_migration once
 
-void rwrite(int d, int lb, int lp);
+void write(int d, int lb, int lp);
 int isHotPage(int lb, int lp);
-void _write_helper(int d, int lb, int lp);
+void write_helper(int d, int lb, int lp);
 void update_lru(int lb, int lp);
-void _write_2_higher_number_list(int d, int lb, int lp);
+void write_2_higher_number_list(int d, int lb, int lp);
 void gc(void);
 void _w(int d, int pb, int pg);
-void _write_2_lower_number_list(int d, int lb, int lp);
-int _find_vb(int start_idx, int end_idx);
+void write_2_lower_number_list(int d, int lb, int lp);
+int find_vb(int start_idx, int end_idx);
 void _erase_block(int pb);
-void _erase_block_data(int idx);
-int _get_most_clean_efficient_block_idx(void);
-int rread(int lb, int lp);
-int _get_erase_count_by_idx(int idx);
+void erase_block_data(int idx);
+int get_most_clean_efficient_block_idx(void);
+int read(int lb, int lp);
+int get_erase_count_by_idx(int idx);
 int min_wear(void);
 int max_wear(void);
 int _r(int pb, int pg);
-void _increase_erase_count(int idx);
+void increase_erase_count(int idx);
 int find_and_update(int la);
 void replace_and_update(int la);
 void _write_spare_area(int pb, int pp, int la);
@@ -90,19 +90,13 @@ int h_clean_counter;   //number of clean blocks in the higher number list
 
 int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, each element store logical address(page addressing)
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
-int chance_index_p = 0;
-//index pointer in chance_arr
-
-
+int chance_index_p = 0;                 //index pointer in chance_arr
 
 //some parameters for testing
 
  
 //TODO: update tau?
 // when to invoke data migration?
-// use _write_spare area in write_2_high/low to invalid P2L, so we don't need invalidate page in _erase_block_data ?
-//In increase_erase_cnt, how about l_active_block_pointer? Dose idx always < last_block idx?
-// In pseudo code, data_migration: leak exception of min_wear = 0 ;_get_erase_cnt_by_idx: range should be MAX_Wear_cnt
 
 
 
@@ -117,11 +111,12 @@ int chance_index_p = 0;
 
  
 /*@
- ensures  (h_clean_counter + l_clean_counter >=1);
+    ensures  (h_clean_counter + l_clean_counter >=1);
  */
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
+        clean[i] = true;        
     }
 
     for(int i=0 ; i<N_LOG_BLOCKS ; i++){
@@ -136,11 +131,6 @@ void initialize(void){
             spare_area[i][j] = -1;
         }
     }
-    //initialize clean
-    for (int i=0; i < N_PHY_BLOCKS; i++) {
-        clean[i] = true;
-        
-    }
     //initialize lru
     for (int i=0; i<LRU_SIZE; i++) {
         cache[i] = -1;
@@ -151,21 +141,19 @@ void initialize(void){
         erase_count_index[i] = N_PHY_BLOCKS ;
     }
     
-     h_act_block_index_p = N_PHY_BLOCKS / 2;// initialize h_act_block_index_p
-     h_act_page_p = 0;
-     l_act_block_index_p = 0;   //initialoze l_act_block_index_p
-     l_act_page_p = 0;
+    h_act_block_index_p = N_PHY_BLOCKS / 2;// initialize h_act_block_index_p
+    h_act_page_p = 0;
+    l_act_block_index_p = 0;   //initialoze l_act_block_index_p
+    l_act_page_p = 0;
 
-     l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
-     h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
+    l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
+    h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
 
     //active block is not a clean block
     l_clean_counter -= 1;
     h_clean_counter -= 1;
     clean[l_act_block_index_p] = false;
     clean[h_act_block_index_p] = false;
-    
-    
 }
 
 /*
@@ -174,7 +162,7 @@ void initialize(void){
 *   :param lp: logical page
 *   :return: return data in the page
 */
-int rread(int lb, int lp){
+int read(int lb, int lp){
     int pa = l_to_p[lb][lp];    //lookup page table to get physical address (page addressing)
     assert(pa != -1);   //when pa == -1, logical address map to nothing => error
     int pb = pa / N_PAGE;   //get physical block
@@ -191,25 +179,21 @@ int rread(int lb, int lp){
 *    :param lp: logical page
 *   invariant: h_clean_counter >= 1
 */
-
-
-/*@ requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp <N_PAGE ;
-    requires (h_clean_counter +l_clean_counter >=1);
-    ensures  (h_clean_counter +l_clean_counter >=1);
+/*@ 
+    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    requires (h_clean_counter + l_clean_counter >= 1);
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
+    ensures  (h_clean_counter + l_clean_counter >= 1);
 */
-void rwrite(int d, int lb, int lp)
+void write(int d, int lb, int lp)
 {
     _write_helper(d, lb, lp);
     update_lru(lb, lp);
     
     //if there is no clean block then GC
-    
-        
-    
     if (h_clean_counter + l_clean_counter < 1){
-        
         gc();
-        
     }
 }
 
@@ -220,20 +204,22 @@ void rwrite(int d, int lb, int lp)
 *    :param lp: logical page number
 *    :return:
 */
-
-/*@ requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp <N_PAGE ;
-       
+/*@ 
+    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;      
 */
-void _write_helper(int d, int lb, int lp){
+void write_helper(int d, int lb, int lp){
     
     //check the logical address is hot or cold
-    if( !isHotPage(lb, lp)){
+    int isHot = isHotPage(lb, lp);
+    if( isHot != 1){
         //cold data
         
-        _write_2_higher_number_list(d, lb, lp);
+        write_2_higher_number_list(d, lb, lp);
     }else{
         //hot data
-        _write_2_lower_number_list(d, lb, lp);
+        write_2_lower_number_list(d, lb, lp);
     }
 }
 
@@ -244,23 +230,33 @@ void _write_helper(int d, int lb, int lp){
 *    :param lp: logical page number
 *    :return:
 */
-
-/*@ requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lb <N_PAGE ;
-    requires 0 <= h_act_block_index_p <N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+/*@ 
+    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
-    assigns  l_to_p[lb][lp] ;
-    assigns  is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
-    assigns  is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] ;
-    assigns  h_act_page_p ;
-    assigns  h_act_block_index_p ;
-    assigns  l_clean_counter, h_clean_counter;
-    assigns  clean[index_2_physical[h_act_block_index_p]];
-    ensures  l_to_p[lb][lp] >=0 ;
-    ensures  is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] == true;
-    ensures  (l_to_p[lb][lp] != -1  ) ==>  (is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == 0);
-    ensures  (\old(h_act_page_p + 1 == N_PAGE)) ==> (h_act_page_p ==0);
+    assigns l_to_p[lb][lp] ;
+    assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
+    assigns is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] ;
+    assigns is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+    assigns spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE];
+    assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
+    assigns spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+    assigns h_act_page_p ;
+    assigns h_act_block_index_p ;
+    assigns l_clean_counter, h_clean_counter;
+    assigns clean[index_2_physical[h_act_block_index_p]];
+    ensures spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == -1;
+    ensures is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
+    ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
+    ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
+    ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
+    ensures l_to_p[lb][lp] >=0 ;
+    ensures is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] == true;
+    ensures (\old(h_act_page_p + 1 == N_PAGE)) ==> (h_act_page_p ==0);
 */
-void _write_2_higher_number_list(int d, int lb, int lp){
+void write_2_higher_number_list(int d, int lb, int lp){
     //invalidate old physical address
     if(l_to_p[lb][lp] != -1){
         //clean previous physical address from the same logical address
@@ -276,7 +272,8 @@ void _write_2_higher_number_list(int d, int lb, int lp){
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
   /*@ ghost
-      ghost_physical[pb][pp] =d ;
+    ghost_logical_disk[lb][lp] = d;
+    ghost_physical[pb][pp] =d ;
    
    */
     
@@ -288,7 +285,6 @@ void _write_2_higher_number_list(int d, int lb, int lp){
     is_valid_page[pb][pp] = true;
 
     //update active pointer value
-    
     if(h_act_page_p + 1 == N_PAGE ){
         //page + 1 == block size
         //move the high pointer to the next clean block
@@ -296,42 +292,38 @@ void _write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p = 0;
 
         h_act_block_index_p = N_PHY_BLOCKS / 2;
+        /*@
+            loop assigns h_act_block_index_p;
+            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
+        */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
             h_act_block_index_p ++;
            
         }
         
-        
-        
-            
-        
         //if no clean blocks in higher number list, then search clean block in lower number list
         if(h_act_block_index_p == N_PHY_BLOCKS){
-            
             h_act_block_index_p = 0;
         }
+        /*@
+            loop assigns h_act_block_index_p;
+            loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
+        */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
             h_act_block_index_p ++;
-            
         }
-       
 
         if( h_act_block_index_p < (N_PHY_BLOCKS/2) ){
-           
             l_clean_counter -= 1;
-        
         }else{
             h_clean_counter -= 1;
         }
 
         clean[index_2_physical[h_act_block_index_p]] = false;
-        
-        
     }else{
         //page + 1 < block size
         h_act_page_p +=1;
     }
-    
 }
 
 /*
@@ -341,7 +333,7 @@ void _write_2_higher_number_list(int d, int lb, int lp){
 *    :param lp: logical page number
 *    :return:
 */
-void _write_2_lower_number_list(int d, int lb, int lp){
+void write_2_lower_number_list(int d, int lb, int lp){
     // invalidate  old physical address
     if(l_to_p[lb][lp] != -1){
         //clean previous physical address from the same logical address
@@ -398,39 +390,32 @@ void _write_2_lower_number_list(int d, int lb, int lp){
 void gc(void){
     //first check higher number list to guarantee the invariant of h_clean_counter >= 1
     if(h_clean_counter < 1){
-        int h_vic_idx = _find_vb(N_PHY_BLOCKS/2, N_PHY_BLOCKS);
-       
-        _erase_block_data(h_vic_idx);
-        
+        int h_vic_idx = find_vb(N_PHY_BLOCKS/2, N_PHY_BLOCKS);
+        erase_block_data(h_vic_idx);
     }else if(l_clean_counter < 1){
         // check lower number list
-        int l_vic_idx = _find_vb(0, N_PHY_BLOCKS/2);
-        
-        _erase_block_data(l_vic_idx);
-        
+        int l_vic_idx = find_vb(0, N_PHY_BLOCKS/2);
+        erase_block_data(l_vic_idx);
     }else{
-        
-        int v_idx = _find_vb(0, N_PHY_BLOCKS);
-        _erase_block_data(v_idx);
+        int v_idx = find_vb(0, N_PHY_BLOCKS);
+        erase_block_data(v_idx);
     }
     //invoke data migration after do GC DATA_MIGRATION_FREQ times
-        static int GC_counter = 0;
-        GC_counter += 1;
-        if (GC_counter % DATA_MIGRATION_FREQ == 0){
-            data_migration();
-        }
-    
-   
+    static int GC_counter = 0;
+    GC_counter += 1;
+    if (GC_counter % DATA_MIGRATION_FREQ == 0){
+        data_migration();
+    }
 }
 
 /*
 *perform data migration when victim block is in Maxwear
 */
 void data_migration(void){
-    int idx = _get_most_clean_efficient_block_idx();
+    int idx = get_most_clean_efficient_block_idx();
      // max_wear may > min_wear+tau after adapting tau
      // max_wear may < min_wear+tau when the rejuvenator just start
-    if( min_wear() + tau <= _get_erase_count_by_idx(idx) ){     // max_wear may > min_wear+tau after adapting tau
+    if( min_wear() + tau <= get_erase_count_by_idx(idx) ){     // max_wear may > min_wear+tau after adapting tau
         // move all the block in min_wear
         if(min_wear() == 0){
             idx = 0;
@@ -440,7 +425,7 @@ void data_migration(void){
         int end_idx = erase_count_index[ min_wear() ];
         while(idx < end_idx){
             
-            _erase_block_data(idx);
+            erase_block_data(idx);
             idx +=1;
         }
     }
@@ -478,7 +463,7 @@ int max_wear(void){
 *    :param idx: index in the index_2_physical
 *    :return: erase count
 */
-int _get_erase_count_by_idx(int idx){
+int get_erase_count_by_idx(int idx){
     for(int cur = 0 ; cur < MAX_WEAR_CNT ; cur++){
         if (erase_count_index[cur] > idx){
             return cur;
@@ -486,11 +471,12 @@ int _get_erase_count_by_idx(int idx){
     }
     return MAX_WEAR_CNT;
 }
+
 /*
 *find a victim block from [erase_count_start, erase_count_end)
 *    :return victim_idx
 */
-int _find_vb(int start_idx, int end_idx){
+int find_vb(int start_idx, int end_idx){
     int idx = start_idx;
     int vic_idx = idx;
     int n_of_max_invalid_or_clean_page = 0;
@@ -499,7 +485,7 @@ int _find_vb(int start_idx, int end_idx){
         int pid = index_2_physical[idx]; // get physical block id
 
         //ignore the block within the list of erase_cnt= (min_wear + tau)
-        if(_get_erase_count_by_idx(idx) >= min_wear() + tau){
+        if(get_erase_count_by_idx(idx) >= min_wear() + tau){
             idx += 1;
             continue;
         }
@@ -536,7 +522,7 @@ int _find_vb(int start_idx, int end_idx){
 * but it doesn't ignore blocks in Maxwear
 *   :return: most_clean_efficient_idx
 */
-int _get_most_clean_efficient_block_idx(void){
+int get_most_clean_efficient_block_idx(void){
     int most_efficient_idx = 0;
     int n_of_max_invalid_or_clean_page = 0;
 
@@ -574,7 +560,7 @@ int _get_most_clean_efficient_block_idx(void){
 *   :param idx: index in the index_2_physical
 *   :return:
 */
-void _erase_block_data(int idx){
+void erase_block_data(int idx){
     int pb = index_2_physical[idx]; //get physical block
     int pp = 0; //get physical page
     
@@ -584,7 +570,7 @@ void _erase_block_data(int idx){
             int la = _read_spare_area(pb, pp); //get logical addr
             int lb = la / N_PAGE; //get logical block id
             int lp = la % N_PAGE;   //get logical page offset
-            _write_helper(_r(pb,pp), lb, lp);
+            write_helper(_r(pb,pp), lb, lp);
         }
         is_valid_page[pb][pp] = false;
         pp++;
@@ -594,21 +580,17 @@ void _erase_block_data(int idx){
     _erase_block(pb);
     //update block clean status
     clean[pb] = true;
+
     //update clean counter
-        if(idx < (N_PHY_BLOCKS/2) ){
-           
-            l_clean_counter += 1;
-           
-            
-        }
-        
-        else {
-            h_clean_counter += 1;
-        }
-       
+    if(idx < (N_PHY_BLOCKS/2) ){
+        l_clean_counter += 1;
+    }
+    else {
+        h_clean_counter += 1;
+    }
 
     //update erase count for pb
-    _increase_erase_count(idx);
+    increase_erase_count(idx);
 }
 
 /*
@@ -620,6 +602,7 @@ a  example of FTLEraseOneBlock:
     index                          : 0, 1, 2, 3, 4, 5, 6
     erase count                    : 1, 2, 2, 2, 2, 3, 4
     index_2_physical store block ID: 1, 3, 2, 4, 5, 6, 7
+
     now we want to erase idx = 2;
     get its erase count:
         erase_count = _get_erase_count_by_idx(idx) = 2
@@ -629,21 +612,25 @@ a  example of FTLEraseOneBlock:
     index                          : 0, 1, 2, 3, 4, 5, 6
     erase count                    : 1, 2, 2, 2, 2, 3, 4
     index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
+
     update erase count boundry:
         erase_count_index[erase_count] -=1  5->4
     index                          : 0, 1, 2, 3, 4, 5, 6
     erase count                    : 1, 2, 2, 2, 3, 3, 4
     index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
 */
-void _increase_erase_count(int idx){
+void increase_erase_count(int idx){
     //swap the index_2_physical[idx] with the element which has teh same erase count
-    int erase_count = _get_erase_count_by_idx(idx); //get the erase cnt of idx
+    int erase_count = get_erase_count_by_idx(idx); //get the erase cnt of idx
     int last_block_idx = erase_count_index[erase_count] - 1;    //get the ending index which has the same erase cnt
     
     // let active block pointer stay with the same blockID
-        if(last_block_idx == h_act_block_index_p){
-            h_act_block_index_p = idx;
-        }
+    if(last_block_idx == h_act_block_index_p){
+        h_act_block_index_p = idx;
+    }
+    if(last_block_idx == l_act_block_index_p){
+        l_act_block_index_p = idx;
+    }        
 
         //need to check if idx and last_block_idx are clean?
         // if one of them are not clean, then need to update clean counter during swap
@@ -651,10 +638,6 @@ void _increase_erase_count(int idx){
             if(idx < (N_PHY_BLOCKS/2) && last_block_idx >= (N_PHY_BLOCKS/2)){
                 l_clean_counter -= 1;
                 h_clean_counter += 1;
-            }
-            else if(idx >= (N_PHY_BLOCKS/2) && last_block_idx < (N_PHY_BLOCKS/2)){
-                l_clean_counter += 1;
-                h_clean_counter -=1;
             }
         }
     
@@ -664,7 +647,6 @@ void _increase_erase_count(int idx){
 
     // update the erase_count boundary index
     erase_count_index[erase_count] -= 1;
-
 }
 
 /*
@@ -675,8 +657,10 @@ void _increase_erase_count(int idx){
 *    :param pg: physical page
 *    :return:
 */
-
-/*@ requires 0 <= pb < N_PHY_BLOCKS && 0 <= pg < N_PAGE ;
+/*@ 
+    requires -2147483648 <= d <= 2147283647 ;
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pg < N_PAGE;
     assigns disk[pb][pg];
     ensures disk[pb][pg] == d;
 */
@@ -713,9 +697,11 @@ int _read_spare_area(int pb, int pp){
 *    :param pp: physical page address
 *    :param la: logical address
 */
-
-/*@ requires  0 <= pb < N_PHY_BLOCKS && 0 <= pp < N_PAGE ;
+/*@ 
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pp < N_PAGE ;
     requires  0 <= la < 100*N_PAGE ;
+    requires 0 <= la < N_PHY_BLOCKS * N_PAGE;
     assigns  spare_area[pb][pp];
     ensures  spare_area[pb][pp] == la ;
   */
@@ -799,8 +785,4 @@ int isHotPage(int lb, int lp){
 
 int main(void){
     initialize();
-    rwrite (0,0,0);
 }
-
-
-
