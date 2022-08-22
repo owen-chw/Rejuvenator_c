@@ -182,7 +182,7 @@ int read(int lb, int lp){
 /*@ 
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires (h_clean_counter + l_clean_counter >= 1);
-    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures  (h_clean_counter + l_clean_counter >= 1);
 */
@@ -206,7 +206,7 @@ void write(int d, int lb, int lp)
 */
 /*@ 
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;      
 */
 void write_helper(int d, int lb, int lp){
@@ -247,7 +247,7 @@ void write_helper(int d, int lb, int lp){
     assigns clean[index_2_physical[h_act_block_index_p]];
     ensures spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == -1;
     ensures is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
-    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical_disk[lb][lp];
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
     ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
     ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
@@ -272,7 +272,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
   /*@ ghost
-    ghost_logical_disk[lb][lp] = d;
+    ghost_logical[lb][lp] = d;
     ghost_physical[pb][pp] =d ;
    
    */
