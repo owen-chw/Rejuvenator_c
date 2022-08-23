@@ -232,6 +232,9 @@ void write_helper(int d, int lb, int lp){
 *    :param lb: logical block address
 *    :param lp: logical page number
 *    :return:
+245    assigns is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+246    assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
+247    assigns spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
 */
 /*@ 
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
@@ -239,11 +242,9 @@ void write_helper(int d, int lb, int lp){
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
-    assigns is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] ;
-    assigns is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
-    assigns spare_area[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE];
-    assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
-    assigns spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
+    assigns is_valid_page[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns spare_area[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
     assigns h_act_page_p ;
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
