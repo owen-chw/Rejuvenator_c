@@ -115,7 +115,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
-        clean[i] = true;        
+        clean[i] = true;
     }
 
     for(int i=0 ; i<N_LOG_BLOCKS ; i++){
@@ -178,7 +178,7 @@ int read(int lb, int lp){
 *    :param lp: logical page
 *   invariant: h_clean_counter >= 1
 */
-/*@ 
+/*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires (h_clean_counter + l_clean_counter >= 1);
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
@@ -188,10 +188,8 @@ int read(int lb, int lp){
 // todo: for all other place in disk / use assign
 void write(int d, int lb, int lp)
 {
-    /*@ ghost
-        ghost_logical[lb][lp] = d;
-    */
-    _write_helper(d, lb, lp);
+    
+    write_helper(d, lb, lp);
     update_lru(lb, lp);
     
     //if there is no clean block then GC
@@ -207,10 +205,10 @@ void write(int d, int lb, int lp)
 *    :param lp: logical page number
 *    :return:
 */
-/*@ 
+/*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
-    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;      
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
 */
 void write_helper(int d, int lb, int lp){
     
@@ -236,7 +234,7 @@ void write_helper(int d, int lb, int lp){
 246    assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
 247    assigns spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ];
 */
-/*@ 
+/*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
@@ -249,7 +247,8 @@ void write_helper(int d, int lb, int lp){
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[index_2_physical[h_act_block_index_p]];
-    ensures is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
+    assigns ghost_logical[lb][lp];
+    ensures ( \old(l_to_p[lb][lp]) != -1 ) ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
     ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
@@ -265,13 +264,20 @@ void write_2_higher_number_list(int d, int lb, int lp){
         int old_addr = l_to_p[lb][lp];
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
-        is_valid_page[opb][opp] = false;    
+        is_valid_page[opb][opp] = false;
+        
+        
     }
+    
+    //@ assert  (l_to_p[lb][lp] != -1) ==> is_valid_page[l_to_p[lb][lp] / N_PAGE][l_to_p[lb][lp] % N_PAGE] == false;
 
     //write data to new physical address
     int pb = index_2_physical[h_act_block_index_p]; //get active block ID
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
+    /*@ ghost
+         ghost_logical[lb][lp] = d;
+     */
     
     //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
@@ -279,6 +285,8 @@ void write_2_higher_number_list(int d, int lb, int lp){
     int la = lb * N_PAGE + lp;
     _write_spare_area(pb, pp, la);
     is_valid_page[pb][pp] = true;
+    
+    //@ assert  (l_to_p[lb][lp] != -1) ==> is_valid_page[l_to_p[lb][lp] / N_PAGE][l_to_p[lb][lp] % N_PAGE] == false;
 
     //update active pointer value
     if(h_act_page_p + 1 == N_PAGE ){
@@ -320,8 +328,8 @@ void write_2_higher_number_list(int d, int lb, int lp){
         //page + 1 < block size
         h_act_page_p +=1;
     }
+    
 }
-
 /*
 * helper function of writting to lower num list
 *    :param d: data
@@ -626,7 +634,7 @@ void increase_erase_count(int idx){
     }
     if(last_block_idx == l_act_block_index_p){
         l_act_block_index_p = idx;
-    }        
+    }
 
         //need to check if idx and last_block_idx are clean?
         // if one of them are not clean, then need to update clean counter during swap
@@ -653,7 +661,7 @@ void increase_erase_count(int idx){
 *    :param pg: physical page
 *    :return:
 */
-/*@ 
+/*@
     requires -2147483648 <= d <= 2147283647 ;
     requires 0 <= pb < N_PHY_BLOCKS ;
     requires 0 <= pg < N_PAGE;
@@ -662,6 +670,7 @@ void increase_erase_count(int idx){
 */
 void _w(int d, int pb, int pg){
    disk[pb][pg] = d;
+   
 }
 
 /*
@@ -693,7 +702,7 @@ int _read_spare_area(int pb, int pp){
 *    :param pp: physical page address
 *    :param la: logical address
 */
-/*@ 
+/*@
     requires 0 <= pb < N_PHY_BLOCKS ;
     requires 0 <= pp < N_PAGE ;
     requires  0 <= la < 100*N_PAGE ;
@@ -782,3 +791,4 @@ int isHotPage(int lb, int lp){
 int main(void){
     initialize();
 }
+
