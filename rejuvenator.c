@@ -102,7 +102,6 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 
 /*@ ghost
     int ghost_logical[N_LOG_BLOCKS][N_PAGE];
-    int ghost_physical[N_PHY_BLOCKS][N_PAGE];
 */
 
 /*
@@ -186,8 +185,12 @@ int read(int lb, int lp){
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures  (h_clean_counter + l_clean_counter >= 1);
 */
+// todo: for all other place in disk / use assign
 void write(int d, int lb, int lp)
 {
+    /*@ ghost
+        ghost_logical[lb][lp] = d;
+    */
     _write_helper(d, lb, lp);
     update_lru(lb, lp);
     
@@ -253,7 +256,6 @@ void write_helper(int d, int lb, int lp){
     ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
     ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
     ensures l_to_p[lb][lp] >=0 ;
-    ensures is_valid_page[index_2_physical[h_act_block_index_p]][h_act_page_p] == true;
     ensures (\old(h_act_page_p + 1 == N_PAGE)) ==> (h_act_page_p ==0);
 */
 void write_2_higher_number_list(int d, int lb, int lp){
@@ -263,19 +265,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
         int old_addr = l_to_p[lb][lp];
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
-        is_valid_page[opb][opp] = false;
-        _write_spare_area(opb, opp, -1);
+        is_valid_page[opb][opp] = false;    
     }
 
     //write data to new physical address
     int pb = index_2_physical[h_act_block_index_p]; //get active block ID
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
-  /*@ ghost
-    ghost_logical[lb][lp] = d;
-    ghost_physical[pb][pp] =d ;
-   
-   */
     
     //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
