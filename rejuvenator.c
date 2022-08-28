@@ -111,7 +111,8 @@ int chance_index_p = 0;                 //index pointer in chance_arr
  
 /*@
     ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-    ensures  (h_clean_counter + l_clean_counter >=1);
+    ensures 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
+    ensures  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
    
  */
@@ -183,24 +184,40 @@ int read(int lb, int lp){
 */
 /*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-    requires (h_clean_counter + l_clean_counter >= 1);
+    requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
-    ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
+    requires -2147483648 <= d <= 2147283647 ;
+    assigns ghost_logical[lb][lp];
+    assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
+    ensures ghost_logical[lb][lp] == d;
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures  (h_clean_counter + l_clean_counter >= 1);
 */
 // todo: for all other place in disk / use assign
 void write(int d, int lb, int lp)
 {
-    
+    /*@ ghost
+         ghost_logical[lb][lp] = d;
+     */
+     
+     
     write_helper(d, lb, lp);
+     //@assert disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
+     //@ assert ghost_logical[lb][lp] == d;
     update_lru(lb, lp);
-    
+    //@assert disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     //if there is no clean block then GC
     if (h_clean_counter + l_clean_counter < 1){
         gc();
+        
     }
+    
+    //@ assert ghost_logical[lb][lp] == d;
+    
 }
 
 /*
@@ -214,8 +231,14 @@ void write(int d, int lb, int lp)
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
+    requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
+    requires ghost_logical[lb][lp] ==d;
+    requires -2147483648 <= d <= 2147283647 ;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
+    ensures   (   h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
+    ensures ghost_logical[lb][lp] == d;
+    
 */
 void write_helper(int d, int lb, int lp){
     
@@ -245,7 +268,9 @@ void write_helper(int d, int lb, int lp){
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
+    requires -2147483648 <= d <= 2147283647 ;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
+    requires ghost_logical[lb][lp] == d;
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
     assigns is_valid_page[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
@@ -255,8 +280,7 @@ void write_helper(int d, int lb, int lp){
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[index_2_physical[h_act_block_index_p]];
-    assigns ghost_logical[lb][lp];
-    ensures ( \old(l_to_p[lb][lp]) != -1 ) ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
+    ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(h_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(h_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
     ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
@@ -264,12 +288,14 @@ void write_helper(int d, int lb, int lp){
     ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures (\old(h_act_page_p + 1 == N_PAGE)) ==> (h_act_page_p ==0);
+    ensures ghost_logical[lb][lp] == d;
+
 */
 void write_2_higher_number_list(int d, int lb, int lp){
     //invalidate old physical address
     
     if(l_to_p[lb][lp] != -1){
-        //@ assert  0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE;
+       
         //clean previous physical address from the same logical address
         int old_addr = l_to_p[lb][lp];
 
@@ -286,9 +312,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     int pb = index_2_physical[h_act_block_index_p]; //get active block ID
     int pp = h_act_page_p;  //get active page
     _w(d, pb, pp);  //write data
-    /*@ ghost
-         ghost_logical[lb][lp] = d;
-     */
+    
     
     //update logical to physical mapping
     int new_addr = pb * N_PAGE + pp;
@@ -348,6 +372,32 @@ void write_2_higher_number_list(int d, int lb, int lp){
 *    :param lp: logical page number
 *    :return:
 */
+/*@
+    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
+    requires \valid(clean+(0.. N_PHY_BLOCKS-1));
+    requires -2147483648 <= d <= 2147283647 ;
+    requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
+    requires ghost_logical[lb][lp] == d;
+    assigns l_to_p[lb][lp] ;
+    assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
+    assigns is_valid_page[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns spare_area[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns l_act_page_p ;
+    assigns l_act_block_index_p ;
+    assigns l_clean_counter, h_clean_counter;
+    assigns clean[index_2_physical[l_act_block_index_p]];
+    ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(l_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(l_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
+    ensures disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)] == ghost_logical[lb][lp];
+    ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
+    ensures l_to_p[lb][lp] == index_2_physical[\old(l_act_block_index_p)] * N_PAGE + \old(l_act_page_p);
+    ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
+    ensures 0 <= l_act_block_index_p < N_PHY_BLOCKS && 0 <= l_act_page_p < N_PAGE;
+    ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
+    ensures (\old(l_act_page_p + 1 == N_PAGE)) ==> (l_act_page_p ==0);
+    ensures ghost_logical[lb][lp] == d;
+*/
 void write_2_lower_number_list(int d, int lb, int lp){
     // invalidate  old physical address
     if(l_to_p[lb][lp] != -1){
@@ -402,6 +452,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
 *perform garbage collection to ensure there is at least one clean block
 *    :return:
 */
+
 void gc(void){
     //first check higher number list to guarantee the invariant of h_clean_counter >= 1
     if(h_clean_counter < 1){
@@ -742,6 +793,12 @@ void _erase_block(int pb){
 *   :param lp: logical page offset
 *   :return:
 */
+/*@  requires disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
+     
+     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
+     
+*/
+
 void update_lru(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get locical address (page addressing)
     int exist = find_and_update(la);    //check whether la in cache or not
@@ -807,4 +864,3 @@ int main(void){
     initialize();
     write(0,0,0);
 }
-
