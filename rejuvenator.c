@@ -114,7 +114,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
     ensures  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
-   
+    ensures  0 <=  chance_index_p < LRU_SIZE;
  */
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
@@ -189,10 +189,14 @@ int read(int lb, int lp){
     requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires -2147483648 <= d <= 2147283647 ;
+    requires 0 <=  chance_index_p < LRU_SIZE;
     assigns ghost_logical[lb][lp];
     assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
     assigns disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
     assigns disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)];
+    assigns h_clean_counter,l_clean_counter,h_act_page_p,l_act_page_p;
+    assigns l_to_p[lb][lp] ;
+    assigns chance_index_p ;
     
     ensures ghost_logical[lb][lp] == d;
     ensures  disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] ==d ;
@@ -240,6 +244,7 @@ void write(int d, int lb, int lp)
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     
     requires -2147483648 <= d <= 2147283647 ;
+    assigns l_to_p[lb][lp] ;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures 0 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
@@ -289,6 +294,7 @@ void write_helper(int d, int lb, int lp){
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[index_2_physical[h_act_block_index_p]];
+    assigns chance_index_p ;
     ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(h_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(h_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
@@ -815,6 +821,9 @@ void _erase_block(int pb){
 *   :return:
 */
 /*@  requires disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
+     requires 0 <=  chance_index_p < LRU_SIZE;
+     requires 0 <= lb * N_PAGE + lp < N_PHY_BLOCKS * N_PAGE ;
+     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
      assigns chance_index_p ;
      ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
      
@@ -834,7 +843,13 @@ void update_lru(int lb, int lp){
 *   :param la: logical address
 *   :return: if la in cache, then return 1; else return 0
 */
+/*@  assigns chance_arr[0.. \old(LRU_SIZE)-1];
+
+*/
 int find_and_update(int la){
+    /*@   loop invariant 0 <= i < LRU_SIZE;
+          loop assigns  chance_arr[i];
+    */
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
             chance_arr[i] = true;
@@ -848,10 +863,17 @@ int find_and_update(int la){
 *   :param la: logical address
 *   :return:
 */
-/*@ assigns chance_index_p ;
+/*@ requires 0 <=  chance_index_p < LRU_SIZE;
+    requires 0 <= la < N_PHY_BLOCKS * N_PAGE ;
+    assigns chance_index_p ;
+    assigns cache[0..\old(LRU_SIZE-1)];
  */
 void replace_and_update(int la){
+    /*@ loop assigns cache[chance_index_p],chance_index_p;
+        loop invariant 0 <= chance_index_p < LRU_SIZE;
+      */
     while(1){
+       
         if(chance_arr[chance_index_p] == false){
             cache[chance_index_p] = la;
             chance_index_p = (chance_index_p + 1) % LRU_SIZE;
@@ -869,13 +891,19 @@ void replace_and_update(int la){
 *   :param lp: logical page
 *   :return: if la is in cache, then return 1; else return 0
 */
-/*@  ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+/*@  requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+     requires 0 <= l_to_p[lp][lb] < 150*100 || l_to_p[lp][lb] == -1;
+     assigns \nothing;
+     ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
      ensures 0 <= l_to_p[lp][lb] < 150*100 || l_to_p[lp][lb] == -1;
-
+     
 */
 int isHotPage(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get logical address (page addressing)
     // currently brute force, traverse cache once
+    /*@ loop invariant 0 <= i <= LRU_SIZE;
+    */
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
             return 1;
