@@ -235,6 +235,7 @@ void write(int d, int lb, int lp)
 /*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     
@@ -442,6 +443,10 @@ void write_2_lower_number_list(int d, int lb, int lp){
         // firstly we search clean block in lower number list
         // if we can't find any clean block in lower number list, then we search in higher number list
         l_act_block_index_p = 0;
+        /*@
+            loop assigns l_act_block_index_p;
+            loop invariant 0 <= l_act_block_index_p < N_PHY_BLOCKS;
+        */
         while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < N_PHY_BLOCKS ){
             l_act_block_index_p += 1;
         }
