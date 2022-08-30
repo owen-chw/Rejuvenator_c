@@ -205,12 +205,11 @@ int read(int lb, int lp){
 void write(int d, int lb, int lp)
 {
     
-     
-     
-    write_helper(d, lb, lp);
     /*@ ghost
          ghost_logical[lb][lp] = d;
      */
+    //@ assert ghost_logical[lb][lp] == d;
+    write_helper(d, lb, lp);
     
     
 
@@ -278,6 +277,7 @@ void write_helper(int d, int lb, int lp){
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
     requires -2147483648 <= d <= 2147283647 ;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
+    requires ghost_logical[lb][lp] == d;
     
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
@@ -352,13 +352,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
         //if no clean blocks in higher number list, then search clean block in lower number list
         if(h_act_block_index_p == N_PHY_BLOCKS){
             h_act_block_index_p = 0;
-        }
-        /*@
-            loop assigns h_act_block_index_p;
-            loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
-        */
-        while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
-            h_act_block_index_p ++;
+            /*@
+                loop assigns h_act_block_index_p;
+                loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
+            */
+            while (clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
+                h_act_block_index_p++;
+            }
         }
 
         if( h_act_block_index_p < (N_PHY_BLOCKS/2) ){
