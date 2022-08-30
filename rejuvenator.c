@@ -418,7 +418,6 @@ void write_2_lower_number_list(int d, int lb, int lp){
         int opb = old_addr / N_PAGE; //turn page addressing to block id
         int opp = old_addr % N_PAGE; //turn page addressing to page offset
         is_valid_page[opb][opp] = false;
-        _write_spare_area(opb, opp, -1);
     }
 
     //wirte data to new physical address
