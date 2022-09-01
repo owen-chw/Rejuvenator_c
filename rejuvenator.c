@@ -242,6 +242,7 @@ void write(int d, int lb, int lp)
     requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
+    requires ghost_logical[lb][lp] == d;
     
     requires -2147483648 <= d <= 2147283647 ;
     assigns l_to_p[lb][lp] ;
@@ -255,10 +256,12 @@ void write(int d, int lb, int lp)
 void write_helper(int d, int lb, int lp){
     
     //check the logical address is hot or cold
+    //@ assert ghost_logical[lb][lp] == d;
     int isHot = isHotPage(lb, lp);
+    //@ assert ghost_logical[lb][lp] == d;
     if( isHot != 1){
         //cold data
-        
+        //@ assert ghost_logical[lb][lp] == d;
         write_2_higher_number_list(d, lb, lp);
     }else{
         //hot data
@@ -334,13 +337,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
     int new_addr = pb * N_PAGE + pp;
     l_to_p[lb][lp] = new_addr;
     int la = lb * N_PAGE + lp;
-    _write_spare_area(pb, pp, la);
+   _write_spare_area(pb, pp, la);
     is_valid_page[pb][pp] = true;
     
     //@ assert  (l_to_p[lb][lp] != -1) ==> is_valid_page[l_to_p[lb][lp] / N_PAGE][l_to_p[lb][lp] % N_PAGE] == true;
 
     //update active pointer value
-    if(h_act_page_p + 1 == N_PAGE ){
+   if(h_act_page_p + 1 == N_PAGE ){
         //page + 1 == block size
         //move the high pointer to the next clean block
         //firstly search a clean block from the head of the high number list
@@ -352,7 +355,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
             loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
         */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
-            h_act_block_index_p ++;
+           h_act_block_index_p ++;
            
         }
         
@@ -662,7 +665,7 @@ void erase_block_data(int idx){
             int la = _read_spare_area(pb, pp); //get logical addr
             int lb = la / N_PAGE; //get logical block id
             int lp = la % N_PAGE;   //get logical page offset
-            write_helper(_r(pb,pp), lb, lp);
+           // write_helper(_r(pb,pp), lb, lp);
         }
         is_valid_page[pb][pp] = false;
         pp++;
@@ -903,6 +906,7 @@ int isHotPage(int lb, int lp){
     int la = lb * N_PAGE + lp;  //get logical address (page addressing)
     // currently brute force, traverse cache once
     /*@ loop invariant 0 <= i <= LRU_SIZE;
+        loop assigns i;
     */
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
