@@ -115,6 +115,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
     ensures  0 <=  chance_index_p < LRU_SIZE;
+    ensures 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
  */
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
@@ -190,6 +191,8 @@ int read(int lb, int lp){
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires -2147483648 <= d <= 2147283647 ;
     requires 0 <=  chance_index_p < LRU_SIZE;
+    requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+    
     assigns ghost_logical[lb][lp];
     assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
     assigns disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
@@ -243,6 +246,7 @@ void write(int d, int lb, int lp)
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     requires ghost_logical[lb][lp] == d;
+    requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
     
     requires -2147483648 <= d <= 2147283647 ;
     assigns l_to_p[lb][lp] ;
@@ -289,6 +293,7 @@ void write_helper(int d, int lb, int lp){
     requires 0 <= l_to_p[lp][lb] < N_PHY_BLOCKS * N_PAGE || l_to_p[lp][lb] == -1;
     requires ghost_logical[lb][lp] == d;
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
+    requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
 
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
@@ -334,7 +339,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
         
         
     }
-    
+       
 
 
     //write data to new physical address
@@ -360,11 +365,16 @@ void write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p = 0;
 
         h_act_block_index_p = N_PHY_BLOCKS / 2;
+        //@ assert  h_act_block_index_p == N_PHY_BLOCKS / 2;
         /*@
             loop assigns h_act_block_index_p;
-            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
+            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p < N_PHY_BLOCKS;
+            loop invariant  0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+        
+            
         */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
+        //@ assert \at(h_act_block_index_p,LoopEntry) == N_PHY_BLOCKS / 2;
            h_act_block_index_p ++;
            
         }
@@ -375,6 +385,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
             /*@
                 loop assigns h_act_block_index_p;
                 loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
+
             */
             while (clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
                 h_act_block_index_p++;
@@ -939,4 +950,5 @@ int isHotPage(int lb, int lp){
 int main(void){
     initialize();
     write(0,0,0);
+   
 }
