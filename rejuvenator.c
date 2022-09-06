@@ -116,6 +116,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
     ensures  0 <=  chance_index_p < LRU_SIZE;
     ensures 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+    ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
  */
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
@@ -192,6 +193,7 @@ int read(int lb, int lp){
     requires -2147483648 <= d <= 2147283647 ;
     requires 0 <=  chance_index_p < LRU_SIZE;
     requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+    requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     
     assigns ghost_logical[lb][lp];
     assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
@@ -247,6 +249,7 @@ void write(int d, int lb, int lp)
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     requires ghost_logical[lb][lp] == d;
     requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+    requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     
     requires -2147483648 <= d <= 2147283647 ;
     assigns l_to_p[lb][lp] ;
@@ -294,6 +297,7 @@ void write_helper(int d, int lb, int lp){
     requires ghost_logical[lb][lp] == d;
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
     requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+    requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
 
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
@@ -370,12 +374,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
         //@ assert N_PHY_BLOCKS/2 <= h_act_block_index_p < N_PHY_BLOCKS;
         /*@
             loop assigns h_act_block_index_p;
-            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
-            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p < N_PHY_BLOCKS ==> 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
+            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p < N_PHY_BLOCKS;
+            loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
         */
         while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
             //@ assert N_PHY_BLOCKS/2 <= h_act_block_index_p < N_PHY_BLOCKS;
             h_act_block_index_p++;
+            if (h_act_block_index_p == N_PHY_BLOCKS) break;
         }
         
         //if no clean blocks in higher number list, then search clean block in lower number list
@@ -384,10 +389,12 @@ void write_2_higher_number_list(int d, int lb, int lp){
             /*@
                 loop assigns h_act_block_index_p;
                 loop invariant 0 <= h_act_block_index_p < N_PHY_BLOCKS / 2;
+                loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
 
             */
             while (clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < (N_PHY_BLOCKS / 2)){
                 h_act_block_index_p++;
+                if (h_act_block_index_p == N_PHY_BLOCKS/2) break;
             }
         }
 
