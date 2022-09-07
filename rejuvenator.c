@@ -370,17 +370,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p = 0;
 
         h_act_block_index_p = N_PHY_BLOCKS / 2;
-        //    loop invariant 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
-        //@ assert N_PHY_BLOCKS/2 <= h_act_block_index_p < N_PHY_BLOCKS;
         /*@
             loop assigns h_act_block_index_p;
-            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p < N_PHY_BLOCKS;
+            loop invariant (N_PHY_BLOCKS / 2) <= h_act_block_index_p <= N_PHY_BLOCKS;
             loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
         */
-        while(clean[index_2_physical[h_act_block_index_p]] == false && h_act_block_index_p < N_PHY_BLOCKS){
-            //@ assert N_PHY_BLOCKS/2 <= h_act_block_index_p < N_PHY_BLOCKS;
+        while(h_act_block_index_p < N_PHY_BLOCKS && clean[index_2_physical[h_act_block_index_p]] == false ){
             h_act_block_index_p++;
-            if (h_act_block_index_p == N_PHY_BLOCKS) break;
         }
         
         //if no clean blocks in higher number list, then search clean block in lower number list
