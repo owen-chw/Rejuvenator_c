@@ -883,8 +883,10 @@ void update_lru(int lb, int lp){
 
 */
 int find_and_update(int la){
-    /*@   loop invariant 0 <= i < LRU_SIZE;
-          loop assigns  chance_arr[i];
+    /*@   
+        loop invariant 0 <= i <= LRU_SIZE;
+        loop assigns i;
+        loop variant LRU_SIZE - i;
     */
     for(int i=0 ; i<LRU_SIZE ; i++){
         if(cache[i] == la){
