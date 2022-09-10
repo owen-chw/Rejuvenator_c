@@ -879,8 +879,9 @@ void update_lru(int lb, int lp){
 *   :param la: logical address
 *   :return: if la in cache, then return 1; else return 0
 */
-/*@  assigns chance_arr[0.. \old(LRU_SIZE)-1];
-
+/*@ 
+    requires 0 <= la < N_PHY_BLOCKS * N_PAGE ;
+    assigns chance_arr[0.. \old(LRU_SIZE)-1];
 */
 int find_and_update(int la){
     /*@   
@@ -904,10 +905,11 @@ int find_and_update(int la){
 /*@ requires 0 <=  chance_index_p < LRU_SIZE;
     requires 0 <= la < N_PHY_BLOCKS * N_PAGE ;
     assigns chance_index_p ;
-    assigns cache[0..\old(LRU_SIZE-1)];
+    assigns cache[0..(LRU_SIZE-1)];
+    assigns chance_arr[0..(LRU_SIZE-1)];
  */
 void replace_and_update(int la){
-    /*@ loop assigns cache[chance_index_p],chance_index_p;
+    /*@ loop assigns cache[0..(LRU_SIZE-1)],chance_index_p, chance_arr[0..(LRU_SIZE-1)];
         loop invariant 0 <= chance_index_p < LRU_SIZE;
       */
     while(1){
