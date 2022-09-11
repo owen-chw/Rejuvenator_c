@@ -614,6 +614,8 @@ int get_erase_count_by_idx(int idx){
 *find a victim block from [erase_count_start, erase_count_end)
 *    :return victim_idx
 */
+/*@ ensures 0 <= \result <  N_PHY_BLOCKS;
+ */
 int find_vb(int start_idx, int end_idx){
     int idx = start_idx;
     int vic_idx = idx;
@@ -698,13 +700,23 @@ int get_most_clean_efficient_block_idx(void){
 *   :param idx: index in the index_2_physical
 *   :return:
 */
-/*@ assigns  is_valid_page[index_2_physical[idx]][0..99];
+/*@ requires  0 <= idx < N_PHY_BLOCKS;
+    assigns  is_valid_page[index_2_physical[idx]][0..(N_PAGE-1)];
+    assigns l_clean_counter;
+    assigns h_clean_counter;
+    assigns clean[index_2_physical[idx]];
+    ensures l_clean_counter == \old(l_clean_counter)+1 ||  h_clean_counter == \old(h_clean_counter)+1 ;
+    
  */
 void erase_block_data(int idx){
     int pb = index_2_physical[idx]; //get physical block
     int pp = 0; //get physical page
     
     //copy valid page to another space and set the page to clean
+    /*@ loop assigns is_valid_page[pb][pp];
+        loop assigns pp;
+        loop invariant 0 <= pp <= N_PAGE;
+     */
     while(pp != N_PAGE){
         if(is_valid_page[pb][pp]){
             int la = _read_spare_area(pb, pp); //get logical addr
@@ -868,7 +880,7 @@ void _erase_block(int pb){
 *   :param lp: logical page offset
 *   :return:
 */
-/*@ 
+/*@
     requires 0 <=  chance_index_p < LRU_SIZE;
     requires 0 <= lb * N_PAGE + lp < N_PHY_BLOCKS * N_PAGE ;
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
@@ -892,12 +904,12 @@ void update_lru(int lb, int lp){
 *   :param la: logical address
 *   :return: if la in cache, then return 1; else return 0
 */
-/*@ 
+/*@
     requires 0 <= la < N_PHY_BLOCKS * N_PAGE ;
     assigns chance_arr[0..(LRU_SIZE-1)];
 */
 int find_and_update(int la){
-    /*@   
+    /*@
         loop invariant 0 <= i <= LRU_SIZE;
         loop assigns i;
         loop variant LRU_SIZE - i;
@@ -971,3 +983,4 @@ int main(void){
     write(0,0,0);
    
 }
+
