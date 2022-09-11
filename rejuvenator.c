@@ -292,7 +292,7 @@ void write_helper(int d, int lb, int lp){
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
-    requires -2147483648 <= d <= 2147283647 ;
+    requires -2147483648 <= d <= 2147483647 ;
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
     requires ghost_logical[lb][lp] == d;
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
@@ -308,7 +308,6 @@ void write_helper(int d, int lb, int lp){
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[0..(N_PHY_BLOCKS - 1)];
-    assigns chance_index_p ;
 
     ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(h_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(h_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
@@ -328,6 +327,8 @@ void write_helper(int d, int lb, int lp){
     behavior block_not_full:
         assumes h_act_page_p+1 != N_PAGE;
         ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> clean[i] == \old(clean[i]);
+    complete behaviors;
+    disjoint behaviors;
 
 */
 void write_2_higher_number_list(int d, int lb, int lp){
@@ -419,10 +420,13 @@ void write_2_higher_number_list(int d, int lb, int lp){
     requires 0 <= l_act_block_index_p < N_PHY_BLOCKS ;
     requires    0 <= l_act_page_p < N_PAGE;
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
-    requires -2147483648 <= d <= 2147283647 ;
+    requires -2147483648 <= d <= 2147483647 ;
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
     requires ghost_logical[lb][lp] == d;
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
+    requires 0 <= index_2_physical[l_act_block_index_p] < N_PHY_BLOCKS ;
+    requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
     assigns is_valid_page[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
@@ -432,6 +436,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     assigns l_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[0..(N_PHY_BLOCKS - 1)];
+
     ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(l_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(l_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)] == ghost_logical[lb][lp];
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
@@ -450,6 +455,8 @@ void write_2_higher_number_list(int d, int lb, int lp){
     behavior block_not_full:
         assumes l_act_page_p+1 != N_PAGE;
         ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> clean[i] == \old(clean[i]);
+    complete behaviors;
+    disjoint behaviors;
 
 */
 void write_2_lower_number_list(int d, int lb, int lp){
@@ -486,11 +493,16 @@ void write_2_lower_number_list(int d, int lb, int lp){
         l_act_block_index_p = 0;
         /*@
             loop assigns l_act_block_index_p;
-            loop invariant 0 <= l_act_block_index_p < N_PHY_BLOCKS;
+            loop invariant 0 <= l_act_block_index_p <= N_PHY_BLOCKS;
+            loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
         */
-        while( clean[ index_2_physical[ l_act_block_index_p ] ] == false && l_act_block_index_p < N_PHY_BLOCKS ){
+        while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ] ] == false ){
             l_act_block_index_p += 1;
         }
+        assert (0 <= l_act_block_index_p);
+        assert (l_act_block_index_p < N_PHY_BLOCKS);
+        //@ assert 0 <= l_act_block_index_p < N_PHY_BLOCKS;
+        //@ assert 0 <= index_2_physical[l_act_block_index_p] < N_PHY_BLOCKS ;
 
         if(l_act_block_index_p < (N_PHY_BLOCKS / 2)){
             l_clean_counter -= 1;
@@ -786,7 +798,7 @@ void increase_erase_count(int idx){
 *    :return:
 */
 /*@
-    requires -2147483648 <= d <= 2147283647 ;
+    requires -2147483648 <= d <= 2147483647 ;
     requires 0 <= pb < N_PHY_BLOCKS ;
     requires 0 <= pg < N_PAGE;
     assigns disk[pb][pg];
