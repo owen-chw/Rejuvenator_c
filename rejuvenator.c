@@ -856,12 +856,13 @@ void _erase_block(int pb){
 *   :param lp: logical page offset
 *   :return:
 */
-/*@  requires disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
-     requires 0 <=  chance_index_p < LRU_SIZE;
-     requires 0 <= lb * N_PAGE + lp < N_PHY_BLOCKS * N_PAGE ;
-     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-     assigns chance_index_p ;
-     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp] ;
+/*@ 
+    requires 0 <=  chance_index_p < LRU_SIZE;
+    requires 0 <= lb * N_PAGE + lp < N_PHY_BLOCKS * N_PAGE ;
+    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    assigns chance_index_p ;
+    assigns chance_arr[0..(LRU_SIZE-1)];
+    assigns cache[0..(LRU_SIZE-1)];
      
      
 */
@@ -881,7 +882,7 @@ void update_lru(int lb, int lp){
 */
 /*@ 
     requires 0 <= la < N_PHY_BLOCKS * N_PAGE ;
-    assigns chance_arr[0.. \old(LRU_SIZE)-1];
+    assigns chance_arr[0..(LRU_SIZE-1)];
 */
 int find_and_update(int la){
     /*@   
