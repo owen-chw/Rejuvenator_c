@@ -107,6 +107,11 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     int l_array_counter;
  */
 
+/* @
+    logic integer count_clean(integer begin, integer end)=
+       (begin<end) && (clean[begin]==true) ? count_clean(begin+1, end)+1 : count_clean(begin+1, end);
+    
+*/
 
 /*
 * initialize
@@ -121,6 +126,8 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures  0 <=  chance_index_p < LRU_SIZE;
     ensures 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
     ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+    ensures h_clean_counter == count_clean( 75, 150 );
+    ensures l_clean_counter == count_clean( 0, 75 );
  */
 void initialize(void){
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
@@ -517,8 +524,8 @@ void write_2_lower_number_list(int d, int lb, int lp){
         while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ] ] == false ){
             l_act_block_index_p += 1;
         }
-        assert (0 <= l_act_block_index_p);
-        assert (l_act_block_index_p < N_PHY_BLOCKS);
+        //assert (0 <= l_act_block_index_p);
+        //assert (l_act_block_index_p < N_PHY_BLOCKS);
         //@ assert 0 <= l_act_block_index_p < N_PHY_BLOCKS;
         //@ assert 0 <= index_2_physical[l_act_block_index_p] < N_PHY_BLOCKS ;
 
