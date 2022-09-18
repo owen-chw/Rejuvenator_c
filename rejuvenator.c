@@ -111,7 +111,8 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 
 /*@
     logic integer count_clean(integer begin, integer end)=
-       (begin<end) && (clean[begin]==true) ? count_clean(begin+1, end)+1 : count_clean(begin+1, end);
+        begin >= end ? 0 : (clean[begin]==true) ? count_clean(begin+1, end)+1 : count_clean(begin+1, end);
+        
     
 */
 
