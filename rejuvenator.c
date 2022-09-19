@@ -109,11 +109,29 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     int l_array_counter;
  */
 
-/*@
+/*
     logic integer count_clean(integer begin, integer end)=
         begin >= end ? 0 : (clean[begin]==true) ? count_clean(begin+1, end)+1 : count_clean(begin+1, end);
+*/
+/*@
+    axiomatic Count_Clean{
+        logic integer count_clean(integer begin, integer end)
+            reads clean[begin .. end-1];
+
+        axiom out_of_range:
+            \forall integer begin, end;
+                begin >= end ==> count_clean(begin, end) == 0;
         
-    
+        axiom is_clean:
+            \forall integer begin, end;
+                (begin < end && clean[begin] == true) ==>
+                    count_clean(begin, end) == 1 + count_clean(begin+1, end);
+
+        axiom not_clean:
+            \forall integer begin, end;
+                (begin < end && clean[begin] != true) ==>
+                    count_clean(begin, end) == count_clean(begin+1, end);
+    }
 */
 
 /*
@@ -131,13 +149,22 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     ensures  count_clean( 75, 150 ) == 0 || count_clean( 75, 150 ) == 1;
     ensures l_clean_counter == count_clean( 0, 75 );
+    ensures count_clean( 0, N_PHY_BLOCKS / 2 ) == N_PHY_BLOCKS/2 - 1;
     ensures l_clean_counter == low_array_counter;
     
  */
 void initialize(void){
+    h_clean_counter = 0;
+    l_clean_counter = 0;
+
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
         clean[i] = true;
+        if(i < N_PHY_BLOCKS/2){
+            l_clean_counter += 1;
+        }else{
+            h_clean_counter += 1;
+        }
     }
 
     for(int i=0 ; i<N_LOG_BLOCKS ; i++){
@@ -167,8 +194,8 @@ void initialize(void){
     l_act_block_index_p = 0;   //initialoze l_act_block_index_p
     l_act_page_p = 0;
 
-    l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
-    h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
+   // l_clean_counter = N_PHY_BLOCKS / 2; //number of clean blocks in the lower number list
+   // h_clean_counter = N_PHY_BLOCKS - l_clean_counter;   //number of clean blocks in the higher number list
 
     //active block is not a clean block
     l_clean_counter -= 1;
