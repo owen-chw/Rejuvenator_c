@@ -134,6 +134,34 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     }
 */
 
+/*@
+    requires N_PHY_BLOCKS > begin >= 0;
+    requires N_PHY_BLOCKS >= end >= 0;
+    requires begin <= end;
+    assigns \nothing;
+    ensures \result == count_clean(begin, end);
+ */
+size_t occurrences_of(int begin, int end)
+{
+    size_t result = 0;
+
+    /*@
+        loop invariant begin <= i <= end;
+        loop invariant 0 <= result; 
+        loop invariant  result <= i-begin;
+        loop invariant result == count_clean(begin, i);
+        loop assigns i, result;
+        loop variant end-i;
+    */
+    for (size_t i = begin; i < end; ++i){
+        result += (clean[i] == true) ? 1 : 0;
+        //@ assert result <= end-begin;
+        //@ assert begin <= i < end;
+        //@ assert result == count_clean(begin, i+1);
+    }
+    return result;
+}
+
 /*
 * initialize
 */
@@ -508,6 +536,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == d;
     ensures 0 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
     ensures l_clean_counter == low_array_counter;
+    ensures l_clean_counter == count_clean( 0, 75 );
     
     ensures   l_clean_counter == l_array_counter ;
     behavior block_full:
