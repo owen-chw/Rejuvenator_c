@@ -50,7 +50,7 @@ void replace_and_update(int la);
 void _write_spare_area(int pb, int pp, int la);
 int _read_spare_area(int pb, int pp);
 void data_migration(void);
-void count_l_clean_array(int begin, int end);
+void count_clean_array(int begin, int end);
 
 
 int tau = 20;     //max_wear <= min_wear + tau
@@ -89,6 +89,7 @@ int disk[N_PHY_BLOCKS][N_PAGE];     // to simulate physical disk: [pb][pp] -> da
 int l_clean_counter; //number of clean blocks in the lower number list
 int h_clean_counter;   //number of clean blocks in the higher number list
 int low_array_counter;
+int high_array_counter;
 
 int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, each element store logical address(page addressing)
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
@@ -151,6 +152,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures l_clean_counter == count_clean( 0, 75 );
     ensures count_clean( 0, N_PHY_BLOCKS / 2 ) == N_PHY_BLOCKS/2 - 1;
     ensures l_clean_counter == low_array_counter;
+    ensures h_clean_counter == high_array_counter;
     
  */
 void initialize(void){
@@ -203,7 +205,7 @@ void initialize(void){
     clean[l_act_block_index_p] = false;
     clean[h_act_block_index_p] = false;
     
-    count_l_clean_array(0,75);
+    count_clean_array(0,75);
             
 }
 
@@ -242,6 +244,8 @@ int read(int lb, int lp){
     requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     
     requires 0 <= l_array_counter < N_PHY_BLOCKS/2;
+    requires l_clean_counter == low_array_counter;
+    requires h_clean_counter == high_array_counter;
     
     assigns ghost_logical[lb][lp];
     assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
@@ -300,6 +304,8 @@ void write(int d, int lb, int lp)
     requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     
     requires 0 <= l_array_counter < N_PHY_BLOCKS/2;
+    requires l_clean_counter == low_array_counter;
+    requires h_clean_counter == high_array_counter;
     
     requires -2147483648 <= d <= 2147283647 ;
     assigns l_to_p[lb][lp] ;
@@ -348,6 +354,9 @@ void write_helper(int d, int lb, int lp){
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
     requires 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
     requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+    
+    requires l_clean_counter == low_array_counter;
+    requires h_clean_counter == high_array_counter;
 
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
@@ -358,6 +367,9 @@ void write_helper(int d, int lb, int lp){
     assigns h_act_block_index_p ;
     assigns l_clean_counter, h_clean_counter;
     assigns clean[0..(N_PHY_BLOCKS - 1)];
+    
+    assigns low_array_counter;
+    assigns high_array_counter;
 
     ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(h_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(h_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)] == ghost_logical[lb][lp];
@@ -370,6 +382,9 @@ void write_helper(int d, int lb, int lp){
     ensures ghost_logical[lb][lp] == d;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == d;
     ensures 0 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
+    
+    ensures   l_clean_counter == low_array_counter ;
+    ensures   h_clean_counter == high_array_counter ;
     
     behavior block_full:
         assumes h_act_page_p+1 == N_PAGE;
@@ -461,6 +476,8 @@ void write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p +=1;
     }
     
+     count_clean_array(0,75);
+    
 }
 /*
 * helper function of writting to lower num list
@@ -481,7 +498,9 @@ void write_2_higher_number_list(int d, int lb, int lp){
     requires 0 <= index_2_physical[l_act_block_index_p] < N_PHY_BLOCKS ;
     requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
     
-    requires 0 <= l_array_counter < N_PHY_BLOCKS/2;
+    
+    requires l_clean_counter == low_array_counter;
+    requires h_clean_counter == high_array_counter;
 
     assigns l_to_p[lb][lp] ;
     assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
@@ -493,8 +512,9 @@ void write_2_higher_number_list(int d, int lb, int lp){
     assigns l_clean_counter, h_clean_counter;
     assigns clean[0..(N_PHY_BLOCKS - 1)];
     
-    assigns l_array_counter;
-    assigns  low_array_counter;
+    
+    assigns low_array_counter;
+    assigns high_array_counter;
 
     ensures ( \old(l_to_p[lb][lp]) != -1 ) && (\old(l_to_p[lb][lp]) / N_PAGE != \old(index_2_physical[\old(l_act_block_index_p)])) && (\old(l_to_p[lb][lp]) % N_PAGE != \old(l_act_page_p))  ==> is_valid_page[\old(l_to_p[lb][lp]) / N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] == false;
     ensures disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)] == ghost_logical[lb][lp];
@@ -507,9 +527,11 @@ void write_2_higher_number_list(int d, int lb, int lp){
     ensures ghost_logical[lb][lp] == d;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == d;
     ensures 0 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
-    ensures l_clean_counter == low_array_counter;
     
-    ensures   l_clean_counter == l_array_counter ;
+    
+    ensures   l_clean_counter == low_array_counter ;
+    ensures   h_clean_counter == high_array_counter ;
+ 
     behavior block_full:
         assumes l_act_page_p+1 == N_PAGE;
         ensures \forall integer i; (0 <= i < N_PHY_BLOCKS) && (i != index_2_physical[l_act_block_index_p]) ==> clean[i] == \old(clean[i]);
@@ -558,7 +580,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
             loop invariant 0 <= l_act_block_index_p <= N_PHY_BLOCKS;
             loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
         */
-        while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ] ] == false ){
+        while( clean[ index_2_physical[ l_act_block_index_p ] &&  l_act_block_index_p < N_PHY_BLOCKS ] == false ){
             l_act_block_index_p += 1;
         }
         //assert (0 <= l_act_block_index_p);
@@ -574,20 +596,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
         }
 
         clean[ index_2_physical[ l_act_block_index_p ] ] = false;
-        /*@ ghost
-               l_array_counter = 0;
-               /@ loop assigns i;
-                  loop assigns l_array_counter;
-                  loop invariant 0 <= l_array_counter <= i ;
-                  loop invariant 0 <= i <= N_PHY_BLOCKS / 2;
-               @/
-               for(int i=0; i < N_PHY_BLOCKS/2; i++){
-                if(clean[i] ==true)  l_array_counter++;
-                //@ assert  l_array_counter <= l_clean_counter;
-               }
-             */
-             
-             //@ assert  l_array_counter == l_clean_counter;
+        
              
              
              
@@ -595,7 +604,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
         //page + 1 < block size
         l_act_page_p += 1;
     }
-    count_l_clean_array(0,75);
+    count_clean_array(0,75);
 }
 
 /*
@@ -1062,18 +1071,24 @@ int isHotPage(int lb, int lp){
    
    
    assigns low_array_counter;
+   assigns high_array_counter;
    ensures low_array_counter == l_clean_counter;
    ensures 0 <= low_array_counter <= N_PHY_BLOCKS/2;
+   ensures high_array_counter == h_clean_counter;
+   ensures 0 <= high_array_counter <= N_PHY_BLOCKS/2;
  */
-void count_l_clean_array(int begin, int end){
+void count_clean_array(int begin, int end){
     low_array_counter = 0;
     /*@loop invariant begin  <= i <= end;
        loop invariant  i - begin <= low_array_counter <= end;
+       loop invariant  i - begin <= high_array_counter <= end;
        loop assigns i;
        loop assigns low_array_counter;
+       loop assigns high_array_counter;
       */
     for (int i = begin; i < end ; i++) {
-        if(clean[i] == true ) low_array_counter++;
+        if(clean[i] == true ) low_array_counter++ ;
+        if(clean[i+75] == true ) high_array_counter++ ;
     }
 }
 int main(void){
@@ -1081,5 +1096,6 @@ int main(void){
     write(0,0,0);
    
 }
+
 
 
