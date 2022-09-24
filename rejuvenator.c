@@ -1078,9 +1078,10 @@ int isHotPage(int lb, int lp){
  */
 void count_clean_array(int begin, int end){
     low_array_counter = 0;
+    high_array_counter = 0;
     /*@loop invariant begin  <= i <= end;
-       loop invariant  i - begin <= low_array_counter <= end;
-       loop invariant  i - begin <= high_array_counter <= end;
+       loop invariant  0 <= low_array_counter <= i - begin;
+       loop invariant  0 <= high_array_counter <= i - begin;
        loop assigns i;
        loop assigns low_array_counter;
        loop assigns high_array_counter;
