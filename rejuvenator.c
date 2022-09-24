@@ -148,8 +148,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     ensures  0 <=  chance_index_p < LRU_SIZE;
     ensures 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
     ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
-    ensures  count_clean( 75, 150 ) == 0 || count_clean( 75, 150 ) == 1;
-    ensures l_clean_counter == count_clean( 0, 75 );
+    ensures l_clean_counter == count_clean( 0, N_PHY_BLOCKS/2 );
     ensures count_clean( 0, N_PHY_BLOCKS / 2 ) == N_PHY_BLOCKS/2 - 1;
     ensures l_clean_counter == low_array_counter;
     ensures h_clean_counter == high_array_counter;
@@ -205,7 +204,7 @@ void initialize(void){
     clean[l_act_block_index_p] = false;
     clean[h_act_block_index_p] = false;
     
-    count_clean_array(0,75);
+    count_clean_array(0,N_PHY_BLOCKS/2);
             
 }
 
@@ -476,7 +475,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
         h_act_page_p +=1;
     }
     
-     count_clean_array(0,75);
+     count_clean_array(0,N_PHY_BLOCKS/2);
     
 }
 /*
@@ -580,7 +579,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
             loop invariant 0 <= l_act_block_index_p <= N_PHY_BLOCKS;
             loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
         */
-        while( clean[ index_2_physical[ l_act_block_index_p ] &&  l_act_block_index_p < N_PHY_BLOCKS ] == false ){
+        while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ]] == false ){
             l_act_block_index_p += 1;
         }
         //assert (0 <= l_act_block_index_p);
@@ -604,7 +603,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
         //page + 1 < block size
         l_act_page_p += 1;
     }
-    count_clean_array(0,75);
+    count_clean_array(0,N_PHY_BLOCKS/2);
 }
 
 /*
@@ -1088,7 +1087,7 @@ void count_clean_array(int begin, int end){
       */
     for (int i = begin; i < end ; i++) {
         if(clean[i] == true ) low_array_counter++ ;
-        if(clean[i+75] == true ) high_array_counter++ ;
+        if(clean[i + N_PHY_BLOCKS/2] == true ) high_array_counter++ ;
     }
 }
 int main(void){
