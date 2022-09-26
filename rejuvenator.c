@@ -53,6 +53,7 @@ void data_migration(void);
 void count_clean_array(int begin, int end);
 
 
+
 int tau = 20;     //max_wear <= min_wear + tau
 bool clean[N_PHY_BLOCKS] = {true};  // clean bit for physical block; phy block ID -> bool
 int index_2_physical[N_PHY_BLOCKS]; //main list of rejuvenator; index -> phy block ID
@@ -134,6 +135,39 @@ int chance_index_p = 0;                 //index pointer in chance_arr
                     count_clean(begin, end) == count_clean(begin+1, end);
     }
 */
+/*@lemma l_clean_counter_eq_count:
+    \forall int begin , int end;
+     begin == 0 && end == N_PHY_BLOCKS/2 ==> count_clean( begin, end) == l_clean_counter;
+ */
+
+/*@
+    requires N_PHY_BLOCKS > begin >= 0;
+    requires N_PHY_BLOCKS >= end >= 0;
+    requires begin <= end;
+    assigns \nothing;
+    ensures \result == count_clean(begin, end);
+ */
+size_t occurrences_of(int begin, int end)
+{
+    size_t result = 0;
+
+    /*@
+        loop invariant begin <= i <= end;
+        loop invariant 0 <= result;
+        loop invariant  result <= i-begin;
+        loop invariant result == count_clean(begin, i);
+        loop assigns i, result;
+        loop variant end-i;
+    */
+    for (size_t i = begin; i < end; ++i){
+        result += (clean[i] == true) ? 1 : 0;
+        //@ assert result <= end-begin;
+        //@ assert begin <= i < end;
+        //@ assert result == count_clean(begin, i+1);
+    }
+    return result;
+}
+
 
 /*
 * initialize
@@ -158,6 +192,16 @@ void initialize(void){
     h_clean_counter = 0;
     l_clean_counter = 0;
 
+    /*@
+        loop invariant 0 <= i <= N_PHY_BLOCKS;
+        loop invariant \forall integer j; 0 <= j < i ==> clean[j] ==true;
+        loop invariant i <= N_PHY_BLOCKS/2 ==> l_clean_counter == count_clean(0, i);
+        loop invariant i > N_PHY_BLOCKS/2 ==> l_clean_counter == count_clean(0, N_PHY_BLOCKS/2);
+        loop invariant i > N_PHY_BLOCKS/2 ==> h_clean_counter == count_clean(N_PHY_BLOCKS/2, i);
+        loop invariant i <= N_PHY_BLOCKS/2 ==> h_clean_counter == count_clean(N_PHY_BLOCKS/2, N_PHY_BLOCKS/2);
+        loop assigns i, l_clean_counter, h_clean_counter;
+
+    */
     for(int i=0 ; i<N_PHY_BLOCKS ; i++){
         index_2_physical[i] = i;
         clean[i] = true;
@@ -1072,6 +1116,7 @@ int isHotPage(int lb, int lp){
    assigns low_array_counter;
    assigns high_array_counter;
    ensures low_array_counter == l_clean_counter;
+   ensures low_array_counter == count_clean(begin, end);
    ensures 0 <= low_array_counter <= N_PHY_BLOCKS/2;
    ensures high_array_counter == h_clean_counter;
    ensures 0 <= high_array_counter <= N_PHY_BLOCKS/2;
@@ -1082,6 +1127,7 @@ void count_clean_array(int begin, int end){
     /*@loop invariant begin  <= i <= end;
        loop invariant  0 <= low_array_counter <= i - begin;
        loop invariant  0 <= high_array_counter <= i - begin;
+       loop invariant low_array_counter == count_clean(begin, i);
        loop assigns i;
        loop assigns low_array_counter;
        loop assigns high_array_counter;
@@ -1091,10 +1137,10 @@ void count_clean_array(int begin, int end){
         if(clean[i + N_PHY_BLOCKS/2] == true ) high_array_counter++ ;
     }
 }
+
 int main(void){
     initialize();
     write(0,0,0);
    
 }
-
 
