@@ -249,6 +249,7 @@ void initialize(void){
     clean[h_act_block_index_p] = false;
     
     count_clean_array(0,N_PHY_BLOCKS/2);
+    
             
 }
 
