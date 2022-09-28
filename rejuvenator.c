@@ -186,6 +186,7 @@ size_t occurrences_of(int begin, int end)
     ensures count_clean( 0, N_PHY_BLOCKS / 2 ) == N_PHY_BLOCKS/2 - 1;
     ensures l_clean_counter == low_array_counter;
     ensures h_clean_counter == high_array_counter;
+    ensures 0 <= tau <= MAX_WEAR_CNT;
     
  */
 void initialize(void){
@@ -290,6 +291,8 @@ int read(int lb, int lp){
     requires 0 <= l_array_counter < N_PHY_BLOCKS/2;
     requires l_clean_counter == low_array_counter;
     requires h_clean_counter == high_array_counter;
+
+    requires 0 <= tau <= MAX_WEAR_CNT;
     
     assigns ghost_logical[lb][lp];
     assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
@@ -655,7 +658,22 @@ void write_2_lower_number_list(int d, int lb, int lp){
 *perform garbage collection to ensure there is at least one clean block
 *    :return:
 */
-/*@ requires h_clean_counter + l_clean_counter < 1;
+/*TODO
+1.Never write to a non-clean page
+
+2.max_wear() - min_wear() < tau
+
+3.Informal: the disk behaves likes an array indexed with logical address
+(Requires: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
+Ensures: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
+Ensures: Ghost_disk[lb][lp] =d
+Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.   Ghost_disk[lb1][lp1] = \old(Ghost_disk[lb1][lp1])
+Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)])
+
+*/
+/*@ requires 0 <= tau <= MAX_WEAR_CNT;
+
+    requires h_clean_counter + l_clean_counter < 1;
     assigns  h_clean_counter, l_clean_counter ;
     ensures  h_clean_counter + l_clean_counter >= 1;
 */
@@ -707,7 +725,15 @@ void data_migration(void){
 * get the erase count of min wear
 *   :return: min_wear value
 */
+/*@ 
+    assigns \nothing;
+    ensures -1 <= \result <=  MAX_WEAR_CNT;
+ */
 int min_wear(void){
+    /*@ loop invariant 0 <= i <= MAX_WEAR_CNT;
+        loop assigns i;
+        loop variant MAX_WEAR_CNT-i;
+    */
     for (int i=0 ; i<MAX_WEAR_CNT ; i++){
         if(erase_count_index[i] != 0){
             return i;
@@ -721,7 +747,15 @@ int min_wear(void){
 *    Get the erase count of max_wear value
 *    :return: max_wear value; if error, return -1
 */
+/*@ 
+    assigns \nothing;
+    ensures -1 <= \result <=  MAX_WEAR_CNT;
+ */
 int max_wear(void){
+    /*@ loop invariant 0 <= i <= MAX_WEAR_CNT;
+        loop assigns i;
+        loop variant MAX_WEAR_CNT-i;
+    */
     for(int i = 0 ; i<MAX_WEAR_CNT ; i++){
         if (erase_count_index[i] == N_PHY_BLOCKS){
             return i;
@@ -735,7 +769,15 @@ int max_wear(void){
 *    :param idx: index in the index_2_physical
 *    :return: erase count
 */
+/*@ ensures 0 <= \result <=  MAX_WEAR_CNT;
+    assigns \nothing;
+ */
 int get_erase_count_by_idx(int idx){
+
+    /*@ loop invariant 0 <= cur <=  MAX_WEAR_CNT;
+        loop assigns cur;
+        loop variant MAX_WEAR_CNT-cur;
+    */
     for(int cur = 0 ; cur < MAX_WEAR_CNT ; cur++){
         if (erase_count_index[cur] > idx){
             return cur;
@@ -748,13 +790,22 @@ int get_erase_count_by_idx(int idx){
 *find a victim block from [erase_count_start, erase_count_end)
 *    :return victim_idx
 */
-/*@ ensures 0 <= \result <  N_PHY_BLOCKS;
+/*@ requires 0 <= tau <= MAX_WEAR_CNT;
+    requires 0 <= start_idx <  N_PHY_BLOCKS;
+    requires 0 <= end_idx <=  N_PHY_BLOCKS;
+    ensures 0 <= \result <  N_PHY_BLOCKS;
+    assigns \nothing;
  */
 int find_vb(int start_idx, int end_idx){
     int idx = start_idx;
     int vic_idx = idx;
     int n_of_max_invalid_or_clean_page = 0;
     
+    /*@ loop invariant start_idx <= idx <  N_PHY_BLOCKS;
+        loop invariant start_idx <= vic_idx <  N_PHY_BLOCKS;
+        loop assigns idx, vic_idx;
+        loop variant end_idx-idx;
+    */
     while(idx != end_idx){
         int pid = index_2_physical[idx]; // get physical block id
 
@@ -776,6 +827,11 @@ int find_vb(int start_idx, int end_idx){
         }
 
         int n_of_invalid_or_clean_page = 0;
+
+        /*@ loop invariant 0 <= pp <= N_PAGE;
+            loop assigns n_of_invalid_or_clean_page, pp;
+            loop variant N_PAGE-pp;
+        */
         for(int pp = 0 ; pp < N_PAGE ; pp++){
             if(is_valid_page[pid][pp] == false){
                 n_of_invalid_or_clean_page +=1;
@@ -835,6 +891,10 @@ int get_most_clean_efficient_block_idx(void){
 *   :return:
 */
 /*@ requires  0 <= idx < N_PHY_BLOCKS;
+    requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+    requires 0 <= l_clean_counter < N_PHY_BLOCKS;
+    requires 0 <= h_clean_counter < N_PHY_BLOCKS;
+
     assigns  is_valid_page[index_2_physical[idx]][0..(N_PAGE-1)];
     assigns l_clean_counter;
     assigns h_clean_counter;
@@ -847,7 +907,7 @@ void erase_block_data(int idx){
     int pp = 0; //get physical page
     
     //copy valid page to another space and set the page to clean
-    /*@ loop assigns is_valid_page[pb][pp];
+    /*@ loop assigns is_valid_page[pb][0..(N_PAGE-1)];
         loop assigns pp;
         loop invariant 0 <= pp <= N_PAGE;
      */
@@ -905,6 +965,16 @@ a  example of FTLEraseOneBlock:
     erase count                    : 1, 2, 2, 2, 3, 3, 4
     index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
 */
+
+/*@ 
+
+    assigns  h_act_block_index_p, l_act_block_index_p;
+    assigns l_clean_counter ,h_clean_counter;
+    assigns erase_count_index[0..(MAX_WEAR_CNT-1)];
+    assigns index_2_physical[0..(N_PHY_BLOCKS-1)];
+    ensures (l_clean_counter == \old(l_clean_counter)-1 && h_clean_counter == \old(h_clean_counter)+1) ||  (l_clean_counter == \old(l_clean_counter) && h_clean_counter == \old(h_clean_counter)) ;
+    
+ */
 void increase_erase_count(int idx){
     //swap the index_2_physical[idx] with the element which has teh same erase count
     int erase_count = get_erase_count_by_idx(idx); //get the erase cnt of idx
@@ -963,6 +1033,12 @@ void _w(int d, int pb, int pg){
 *    :param pg: physical page number
 *    :return: data in this page
 */
+/*@
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pg < N_PAGE;
+    assigns \nothing;
+    
+*/
 int _r(int pb, int pg){
    return disk[pb][pg];
 }
@@ -974,6 +1050,11 @@ int _r(int pb, int pg){
 *    :param pp: physical page address
 *    :return logical address:
 */
+/*@
+    requires 0 <= pb < N_PHY_BLOCKS ;
+    requires 0 <= pp < N_PAGE ;
+    assigns  \nothing;
+  */
 int _read_spare_area(int pb, int pp){
     return spare_area[pb][pp];
 }
@@ -1003,6 +1084,9 @@ void _write_spare_area(int pb, int pp, int la){
 *    :param pb: physical block address
 *    :return:
 */
+/*@
+    assigns  \nothing;
+  */
 void _erase_block(int pb){
     //pass
 }
@@ -1144,4 +1228,3 @@ int main(void){
     write(0,0,0);
    
 }
-
