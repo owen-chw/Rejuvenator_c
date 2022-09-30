@@ -135,7 +135,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
                     count_clean(begin, end) == count_clean(begin+1, end);
     }
 */
-/*@lemma l_clean_counter_eq_count:
+/*lemma l_clean_counter_eq_count:
     \forall int begin , int end;
      begin == 0 && end == N_PHY_BLOCKS/2 ==> count_clean( begin, end) == l_clean_counter;
  */
@@ -339,6 +339,16 @@ void write(int d, int lb, int lp)
 *    :param lb: logical block address
 *    :param lp: logical page number
 *    :return:
+
+NEED TO DO:
+Requires: variable_in_range();  //use predicate
+
+Requires: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
+Ensures: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
+Ensures: Ghost_disk[lb][lp] =d  //done
+Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.   Ghost_disk[lb1][lp1] = \old(Ghost_disk[lb1][lp1])    //maybe use behavior to divide write_2_high/low
+
+Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)]
 */
 /*@
     requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
