@@ -102,6 +102,14 @@ int chance_index_p = 0;                 //index pointer in chance_arr
 //TODO: update tau?
 // when to invoke data migration?
 
+/*@
+    predicate in_L_range(integer lb, integer lp )=
+        0 <= lb < N_LOG_BLOCKS && 0 <= lp < N_PAGE;
+
+    predicate in_P_range(integer pb, integer pp )=
+        0 <= pb < N_PHY_BLOCKS && 0 <= pp < N_PAGE;
+
+*/
 
 
 /*@ ghost
@@ -161,9 +169,9 @@ size_t occurrences_of(int begin, int end)
     */
     for (size_t i = begin; i < end; ++i){
         result += (clean[i] == true) ? 1 : 0;
-        //@ assert result <= end-begin;
-        //@ assert begin <= i < end;
-        //@ assert result == count_clean(begin, i+1);
+        // assert result <= end-begin;
+        // assert begin <= i < end;
+        // assert result == count_clean(begin, i+1);
     }
     return result;
 }
@@ -175,8 +183,8 @@ size_t occurrences_of(int begin, int end)
 
  
 /*@
-    ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-    ensures 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
+    ensures in_P_range(h_act_block_index_p, h_act_page_p);
+    ensures in_P_range(l_act_block_index_p, l_act_page_p);
     ensures  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
     ensures  0 <=  chance_index_p < LRU_SIZE;
@@ -278,10 +286,10 @@ int read(int lb, int lp){
 *   invariant: h_clean_counter >= 1
 */
 /*@
-    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
+    requires in_L_range(lb, lp);
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
-    requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
+    requires in_P_range(h_act_block_index_p, h_act_page_p);
+    requires in_P_range(l_act_block_index_p, l_act_page_p);
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
     requires -2147483648 <= d <= 2147283647 ;
     requires 0 <=  chance_index_p < LRU_SIZE;
@@ -351,9 +359,9 @@ Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.   Ghost_disk[lb1][lp1] = \old
 Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)]
 */
 /*@
-    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-    requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS &&   0 <= l_act_page_p < N_PAGE;
+    requires in_L_range(lb, lp);
+    requires in_P_range(h_act_block_index_p, h_act_page_p);
+    requires in_P_range(l_act_block_index_p, l_act_page_p);
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
     requires  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
     requires ghost_logical[lb][lp] == d;
@@ -422,8 +430,8 @@ void write_helper(int d, int lb, int lp){
     assigns clean[index_2_physical[h_act_block_index_p]];
 */
 /*@
-    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-    requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
+    requires in_L_range(lb, lp);
+    requires in_P_range(h_act_block_index_p, h_act_page_p);
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
     requires -2147483648 <= d <= 2147483647 ;
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
@@ -453,7 +461,7 @@ void write_helper(int d, int lb, int lp){
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
     ensures l_to_p[lb][lp] == index_2_physical[\old(h_act_block_index_p)] * N_PAGE + \old(h_act_page_p);
     ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
-    ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS && 0 <= h_act_page_p < N_PAGE;
+    ensures in_P_range(h_act_block_index_p, h_act_page_p);
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures (\old(h_act_page_p + 1 == N_PAGE)) ==> (h_act_page_p ==0);
     ensures ghost_logical[lb][lp] == d;
@@ -564,9 +572,8 @@ void write_2_higher_number_list(int d, int lb, int lp){
 *    :return:
 */
 /*@
-    requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-    requires 0 <= l_act_block_index_p < N_PHY_BLOCKS ;
-    requires    0 <= l_act_page_p < N_PAGE;
+    requires in_L_range(lb, lp);
+    requires in_P_range(l_act_block_index_p, l_act_page_p);
     requires \valid(clean+(0.. N_PHY_BLOCKS-1));
     requires -2147483648 <= d <= 2147483647 ;
     requires 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS * N_PAGE || l_to_p[lb][lp] == -1;
@@ -598,7 +605,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     ensures spare_area[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == lb * N_PAGE + lp;
     ensures l_to_p[lb][lp] == index_2_physical[\old(l_act_block_index_p)] * N_PAGE + \old(l_act_page_p);
     ensures is_valid_page[ l_to_p[lb][lp] / N_PAGE ][ l_to_p[lb][lp] % N_PAGE ] == true;
-    ensures 0 <= l_act_block_index_p < N_PHY_BLOCKS && 0 <= l_act_page_p < N_PAGE;
+    ensures in_P_range(l_act_block_index_p, l_act_page_p);
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures (\old(l_act_page_p + 1 == N_PAGE)) ==> (l_act_page_p ==0);
     ensures ghost_logical[lb][lp] == d;
@@ -1045,8 +1052,7 @@ void increase_erase_count(int idx){
 */
 /*@
     requires -2147483648 <= d <= 2147483647 ;
-    requires 0 <= pb < N_PHY_BLOCKS ;
-    requires 0 <= pg < N_PAGE;
+    requires in_P_range(pb, pg);
     assigns disk[pb][pg];
     ensures disk[pb][pg] == d;
     
@@ -1064,10 +1070,8 @@ void _w(int d, int pb, int pg){
 *    :return: data in this page
 */
 /*@
-    requires 0 <= pb < N_PHY_BLOCKS ;
-    requires 0 <= pg < N_PAGE;
+    requires in_P_range(pb, pg);
     assigns \nothing;
-    
 */
 int _r(int pb, int pg){
    return disk[pb][pg];
@@ -1081,8 +1085,7 @@ int _r(int pb, int pg){
 *    :return logical address:
 */
 /*@
-    requires 0 <= pb < N_PHY_BLOCKS ;
-    requires 0 <= pp < N_PAGE ;
+    requires in_P_range(pb, pp);
     assigns  \nothing;
   */
 int _read_spare_area(int pb, int pp){
@@ -1099,6 +1102,8 @@ int _read_spare_area(int pb, int pp){
 /*@
     requires 0 <= pb < N_PHY_BLOCKS ;
     requires 0 <= pp < N_PAGE ;
+    requires in_P_range(pb, pp);
+
     requires  0 <= la < 100*N_PAGE ;
     requires 0 <= la < N_PHY_BLOCKS * N_PAGE;
     assigns  spare_area[pb][pp];
@@ -1204,12 +1209,14 @@ void replace_and_update(int la){
 *   :param lp: logical page
 *   :return: if la is in cache, then return 1; else return 0
 */
-/*@  requires 0 <= lb < N_LOG_BLOCKS &&  0 <= lp < N_PAGE ;
-     requires 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-     requires 0 <= l_to_p[lb][lp] < 150*100 || l_to_p[lb][lp] == -1;
-     assigns \nothing;
-     ensures 0 <= h_act_block_index_p < N_PHY_BLOCKS &&   0 <= h_act_page_p < N_PAGE;
-     ensures 0 <= l_to_p[lb][lp] < 150*100 || l_to_p[lb][lp] == -1;
+/*@  
+    requires in_L_range(lb, lp);
+    requires in_P_range(h_act_block_index_p, h_act_page_p);
+    requires 0 <= l_to_p[lb][lp] < 150*100 || l_to_p[lb][lp] == -1;
+    assigns \nothing;
+
+    ensures in_P_range(h_act_block_index_p, h_act_page_p);
+    ensures 0 <= l_to_p[lb][lp] < 150*100 || l_to_p[lb][lp] == -1;
      
 */
 int isHotPage(int lb, int lp){
