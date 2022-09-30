@@ -366,12 +366,32 @@ Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)]
     
     requires -2147483648 <= d <= 2147283647 ;
     assigns l_to_p[lb][lp] ;
+   
+    assigns is_valid_page[\old(l_to_p[lb][lp])/N_PAGE][\old(l_to_p[lb][lp]) % N_PAGE] ;
+    assigns is_valid_page[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns is_valid_page[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns disk[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns disk[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns spare_area[ index_2_physical[\old(h_act_block_index_p)] ][\old(h_act_page_p)];
+    assigns spare_area[ index_2_physical[\old(l_act_block_index_p)] ][\old(l_act_page_p)];
+    assigns h_act_page_p ;
+    assigns h_act_block_index_p ;
+    assigns l_act_page_p ;
+    assigns l_act_block_index_p ;
+    assigns l_clean_counter, h_clean_counter;
+    assigns clean[0..(N_PHY_BLOCKS - 1)];
+       
+    assigns low_array_counter;
+    assigns high_array_counter;
+    
+    
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == ghost_logical[lb][lp];
     ensures 0 <= l_to_p[lb][lp] < N_PHY_BLOCKS*N_PAGE;
     ensures 0 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
     ensures ghost_logical[lb][lp] == d;
     ensures disk[(l_to_p[lb][lp] / N_PAGE)][(l_to_p[lb][lp] % N_PAGE)] == d;
-    
+
+    ensures \forall int lb1,int lp1; ( lb1 != lb || lp1 != lp) && (\old(l_to_p[lb1][lp1]) != -1) && (l_to_p[lb1][lp1] != -1)  ==>   disk[(l_to_p[lb1][lp1] / N_PAGE)][(l_to_p[lb1][lp1] % N_PAGE)] == \old(disk[(l_to_p[lb1][lp1] / N_PAGE)][(l_to_p[lb1][lp1] % N_PAGE)]);
 */
 void write_helper(int d, int lb, int lp){
     
@@ -677,7 +697,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
 (Requires: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
 Ensures: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
 Ensures: Ghost_disk[lb][lp] =d
-Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.   Ghost_disk[lb1][lp1] = \old(Ghost_disk[lb1][lp1])
+Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.  \uf0e8 Ghost_disk[lb1][lp1] = \old(Ghost_disk[lb1][lp1])
 Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)])
 
 */
@@ -735,7 +755,7 @@ void data_migration(void){
 * get the erase count of min wear
 *   :return: min_wear value
 */
-/*@ 
+/*@
     assigns \nothing;
     ensures -1 <= \result <=  MAX_WEAR_CNT;
  */
@@ -757,7 +777,7 @@ int min_wear(void){
 *    Get the erase count of max_wear value
 *    :return: max_wear value; if error, return -1
 */
-/*@ 
+/*@
     assigns \nothing;
     ensures -1 <= \result <=  MAX_WEAR_CNT;
  */
@@ -976,8 +996,8 @@ a  example of FTLEraseOneBlock:
     index_2_physical store block ID: 1, 3, 5, 4, 2, 6, 7
 */
 
-/*@ 
-
+/*@
+    requires 0 <= idx <= N_PHY_BLOCKS ;
     assigns  h_act_block_index_p, l_act_block_index_p;
     assigns l_clean_counter ,h_clean_counter;
     assigns erase_count_index[0..(MAX_WEAR_CNT-1)];
