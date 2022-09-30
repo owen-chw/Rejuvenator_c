@@ -143,10 +143,6 @@ int chance_index_p = 0;                 //index pointer in chance_arr
                     count_clean(begin, end) == count_clean(begin+1, end);
     }
 */
-/*lemma l_clean_counter_eq_count:
-    \forall int begin , int end;
-     begin == 0 && end == N_PHY_BLOCKS/2 ==> count_clean( begin, end) == l_clean_counter;
- */
 
 /*@
     requires N_PHY_BLOCKS > begin >= 0;
@@ -1209,7 +1205,7 @@ void replace_and_update(int la){
 *   :param lp: logical page
 *   :return: if la is in cache, then return 1; else return 0
 */
-/*@  
+/*@
     requires in_L_range(lb, lp);
     requires in_P_range(h_act_block_index_p, h_act_page_p);
     requires 0 <= l_to_p[lb][lp] < 150*100 || l_to_p[lb][lp] == -1;
