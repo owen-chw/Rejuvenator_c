@@ -135,7 +135,7 @@ int chance_index_p = 0;                 //index pointer in chance_arr
                     count_clean(begin, end) == count_clean(begin+1, end);
     }
 */
-/*@lemma l_clean_counter_eq_count:
+/*lemma l_clean_counter_eq_count:
     \forall int begin , int end;
      begin == 0 && end == N_PHY_BLOCKS/2 ==> count_clean( begin, end) == l_clean_counter;
  */
@@ -161,9 +161,6 @@ size_t occurrences_of(int begin, int end)
     */
     for (size_t i = begin; i < end; ++i){
         result += (clean[i] == true) ? 1 : 0;
-        //@ assert result <= end-begin;
-        //@ assert begin <= i < end;
-        //@ assert result == count_clean(begin, i+1);
     }
     return result;
 }
@@ -326,7 +323,7 @@ void write(int d, int lb, int lp)
     
  
      //if there is no clean block then GC
-    if (h_clean_counter + l_clean_counter < 1){
+    if (h_clean_counter + l_clean_counter < 2){
         gc();
         
     }
@@ -698,6 +695,13 @@ Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)])
     ensures  h_clean_counter + l_clean_counter >= 1;
 */
 void gc(void){
+    int idx = get_most_clean_efficient_block_idx();
+    if( min_wear() + tau <= get_erase_count_by_idx(idx) ){
+	data_migration()
+    }
+    erase_block_data(idx);
+
+    /*
     //first check higher number list to guarantee the invariant of h_clean_counter >= 1
     if(h_clean_counter < 1){
         int h_vic_idx = find_vb(N_PHY_BLOCKS/2, N_PHY_BLOCKS);
@@ -715,17 +719,17 @@ void gc(void){
     GC_counter += 1;
     if (GC_counter % DATA_MIGRATION_FREQ == 0){
         data_migration();
-    }
+    }*/
 }
 
 /*
 *perform data migration when victim block is in Maxwear
 */
 void data_migration(void){
-    int idx = get_most_clean_efficient_block_idx();
+//    int idx = get_most_clean_efficient_block_idx();
      // max_wear may > min_wear+tau after adapting tau
      // max_wear may < min_wear+tau when the rejuvenator just start
-    if( min_wear() + tau <= get_erase_count_by_idx(idx) ){     // max_wear may > min_wear+tau after adapting tau
+//    if( min_wear() + tau <= get_erase_count_by_idx(idx) ){     // max_wear may > min_wear+tau after adapting tau
         // move all the block in min_wear
         if(min_wear() == 0){
             idx = 0;
@@ -733,12 +737,11 @@ void data_migration(void){
             idx = erase_count_index[min_wear() - 1]; // set index to the front of erase count i
         }
         int end_idx = erase_count_index[ min_wear() ];
-        while(idx < end_idx){
-            
+        while(idx < end_idx){    
             erase_block_data(idx);
             idx +=1;
         }
-    }
+//    }
 }
 
 /*
