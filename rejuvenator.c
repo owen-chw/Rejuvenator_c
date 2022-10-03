@@ -709,7 +709,7 @@ Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)])
 */
 void gc(void){
     while(h_clean_counter + l_clean_counter < 2){
-	int idx = get_most_clean_efficient_block_idx();
+        int idx = get_most_clean_efficient_block_idx();
         if( min_wear() + tau <= get_erase_count_by_idx(idx) ){
        	    data_migration();
         }
@@ -741,6 +741,7 @@ void gc(void){
 *perform data migration when victim block is in Maxwear
 */
 void data_migration(void){
+    // move all the block in min_wear
     int idx;
     if(min_wear() == 0){
         idx = 0;
@@ -949,7 +950,7 @@ void erase_block_data(int idx){
             int la = _read_spare_area(pb, pp); //get logical addr
             int lb = la / N_PAGE; //get logical block id
             int lp = la % N_PAGE;   //get logical page offset
-           // write_helper(_r(pb,pp), lb, lp);
+            write_helper(_r(pb,pp), lb, lp);
         }
         is_valid_page[pb][pp] = false;
         pp++;
