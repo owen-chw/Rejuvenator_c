@@ -343,6 +343,7 @@ void write(int d, int lb, int lp)
 
 NEED TO DO:
 Requires: variable_in_range();  //use predicate
+requires: h_counter + low_counter >=2
 
 Requires: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
 Ensures: forall lb1, lp1 . Ghost_disk[lb1][lp1] = Disk[l2p_b(lb1) ][ l2p_p(lp1)]
@@ -574,7 +575,7 @@ void write_2_higher_number_list(int d, int lb, int lp){
     requires 1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS ;
     requires 0 <= index_2_physical[l_act_block_index_p] < N_PHY_BLOCKS ;
     requires \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
-    
+    requires \exists integer i; 0 <= i < N_PHY_BLOCKS && clean[index_2_physical[i]]==true;
     
     requires l_clean_counter == low_array_counter;
     requires h_clean_counter == high_array_counter;
@@ -656,6 +657,7 @@ void write_2_lower_number_list(int d, int lb, int lp){
             loop assigns l_act_block_index_p;
             loop invariant 0 <= l_act_block_index_p <= N_PHY_BLOCKS;
             loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+            loop invariant all_flase: \forall integer i; 0 <= i < l_act_block_index_p ==> clean[ index_2_physical[ l_act_block_index_p ]] == false;
         */
         while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ]] == false ){
             l_act_block_index_p += 1;
