@@ -653,11 +653,14 @@ void write_2_lower_number_list(int d, int lb, int lp){
         // firstly we search clean block in lower number list
         // if we can't find any clean block in lower number list, then we search in higher number list
         l_act_block_index_p = 0;
+            //loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
+
+        //@ assert \exists integer i; 0 <= i < N_PHY_BLOCKS && clean[index_2_physical[i]]==true;
         /*@
             loop assigns l_act_block_index_p;
-            loop invariant 0 <= l_act_block_index_p <= N_PHY_BLOCKS;
+            loop invariant 0 <= l_act_block_index_p < N_PHY_BLOCKS;
+            loop invariant all_flase: \forall integer i; 0 <= i < l_act_block_index_p ==> clean[ index_2_physical[ i ]] == false;
             loop invariant \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
-            loop invariant all_flase: \forall integer i; 0 <= i < l_act_block_index_p ==> clean[ index_2_physical[ l_act_block_index_p ]] == false;
         */
         while( l_act_block_index_p < N_PHY_BLOCKS && clean[ index_2_physical[ l_act_block_index_p ]] == false ){
             l_act_block_index_p += 1;
