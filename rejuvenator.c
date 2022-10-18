@@ -351,6 +351,11 @@ Ensures: Ghost_disk[lb][lp] =d  //done
 Ensures: forall lb1, lp1 .  lb1!=lb \/ lp1!=lp.   Ghost_disk[lb1][lp1] = \old(Ghost_disk[lb1][lp1])    //maybe use behavior to divide write_2_high/low
 
 Ensures: Ghost_disk[lb][lp] =d = Disk[l2p_b(lb) ][ l2p_p(lp)]
+h_clean counter merge with l_clean counter
+requires counter == count_clean(0, N_PHY_BLOCK)
+==> requires \exists integer i; 0 <= i < N_PHY_BLOCKS && clean[index_2_physical[i]]==true;
+ensures counter == count_clean(0, N_PHY_BLOCK)
+
 */
 /*@
     requires in_L_range(lb, lp);
