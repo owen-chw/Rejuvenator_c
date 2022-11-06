@@ -96,11 +96,7 @@ int cache[LRU_SIZE] = {-1};             //cache of hot/cold data seperation, eac
 bool chance_arr[LRU_SIZE] = {false};     //second chance array of lru cache
 int chance_index_p = 0;                 //index pointer in chance_arr
 
-//some parameters for testing
-
  
-//TODO: update tau?
-// when to invoke data migration?
 
 /*@
     predicate in_L_range(integer lb, integer lp )=
@@ -119,11 +115,11 @@ int chance_index_p = 0;                 //index pointer in chance_arr
     int l_array_counter;
  */
 
-/*
-    logic integer count_clean(integer begin, integer end)=
-        begin >= end ? 0 : (clean[begin]==true) ? count_clean(begin+1, end)+1 : count_clean(begin+1, end);
-*/
 /*@
+    logic integer count_clean(integer begin, integer end)=
+        begin >= end ? 0 : (clean[end-1]==true) ? count_clean(begin, end-1)+1 : count_clean(begin, end-1);
+*/
+/*
     axiomatic Count_Clean{
         logic integer count_clean(integer begin, integer end)
             reads clean[begin .. end-1];
@@ -179,7 +175,7 @@ size_t occurrences_of(int begin, int end)
     ensures in_P_range(h_act_block_index_p, h_act_page_p);
     ensures in_P_range(l_act_block_index_p, l_act_page_p);
     ensures  (  1 <= h_clean_counter + l_clean_counter <= N_PHY_BLOCKS );
-    ensures \forall  int i,j; 0 <= i < N_LOG_BLOCKS &&  0 <= j < N_PAGE ==>   l_to_p[i][j] == -1;
+    ensures \forall  int i,j; in_L_range(i, j) ==>   l_to_p[i][j] == -1;
     ensures  0 <=  chance_index_p < LRU_SIZE;
     ensures 0 <= index_2_physical[h_act_block_index_p] < N_PHY_BLOCKS ;
     ensures \forall integer i; 0 <= i < N_PHY_BLOCKS ==> 0 <= index_2_physical[i] < N_PHY_BLOCKS;
@@ -197,10 +193,10 @@ void initialize(void){
     /*@
         loop invariant 0 <= i <= N_PHY_BLOCKS;
         loop invariant \forall integer j; 0 <= j < i ==> clean[j] ==true;
-        loop invariant i <= N_PHY_BLOCKS/2 ==> l_clean_counter == count_clean(0, i);
+        loop invariant 0 <= i < N_PHY_BLOCKS/2 ==> l_clean_counter == count_clean(0, i);
+        loop invariant 0 <= i < N_PHY_BLOCKS/2 ==> h_clean_counter == count_clean(N_PHY_BLOCKS/2, N_PHY_BLOCKS/2);
         loop invariant i > N_PHY_BLOCKS/2 ==> l_clean_counter == count_clean(0, N_PHY_BLOCKS/2);
         loop invariant i > N_PHY_BLOCKS/2 ==> h_clean_counter == count_clean(N_PHY_BLOCKS/2, i);
-        loop invariant i <= N_PHY_BLOCKS/2 ==> h_clean_counter == count_clean(N_PHY_BLOCKS/2, N_PHY_BLOCKS/2);
         loop assigns i, l_clean_counter, h_clean_counter;
 
     */
@@ -1272,3 +1268,14 @@ int main(void){
     write(0,0,0);
    
 }
+
+
+/*
+TODO list:
+line 28 delete
+line 92, 93: why need this two counter
+line 119~141: delete logic function or axiom
+
+//TODO: update tau?
+// when to invoke data migration?
+*/
